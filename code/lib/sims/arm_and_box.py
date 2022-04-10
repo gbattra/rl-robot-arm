@@ -55,6 +55,7 @@ class ArmAndBoxSimParts:
 @dataclass
 class ArmAndBoxSim:
     sim: gymapi.Sim
+    viewer: gymapi.Viewer
     parts: ArmAndBoxSimParts
     env_ptrs: List = field(default=list())
     arm_handles: List = field(default=list())
@@ -135,10 +136,35 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     )
 
     parts: ArmAndBoxSimParts = build_parts(config, gym)
-    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, parts)
+    viewer: gymapi.Viewer = gym.create_viewer(sim, gymapi.CameraProperties())
+    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, viewer, parts)
 
     for i in config.n_envs:
         create_env(config, arm_and_box_sim, gym)
 
     return arm_and_box_sim
 
+
+def start_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
+    '''
+    Start the sim / pre-loop setup
+    '''
+    # gym.viewer_camera_look_at(sim.viewer, ...)
+    gym.prepare_sim(sim.sim)
+
+
+def step_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
+    # pre-physics
+    gym.refresh_rigid_body_state_tensor(sim.sim)
+    gym.refresh_dof_state_tensor(sim.sim)
+    gym.refresh_jacobian_tensors(sim.sim)
+    gym.refresh_mass_matrix_tensors(sim.sim)
+
+    # physics step
+    gym.simulate(sim.sim)
+    gym.fetch_results(sim.sim, True)
+
+    # render step
+    gym.step_graphics(sim.sim)
+    gym.draw_viewer(sim.viewer, sim.sim, render_collision=False)
+    gym.sync_frame_time(sim.sim)
