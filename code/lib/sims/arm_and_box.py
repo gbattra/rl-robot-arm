@@ -56,9 +56,9 @@ class ArmAndBoxSim:
     sim: gymapi.Sim
     viewer: gymapi.Viewer
     parts: ArmAndBoxSimParts
-    env_ptrs: List = field(default=list())
-    arm_handles: List = field(default=list())
-    box_handles: List = field(default=list())
+    env_ptrs: List
+    arm_handles: List
+    box_handles: List
 
 
 def load_asset(
@@ -79,7 +79,7 @@ def create_env(
         gym: gymapi.Gym) -> None:
     assert sim.parts.arm is not None, 'sim.parts.arm is None'
 
-    env_idx = len(ArmAndBoxSim)
+    env_idx = len(sim.env_ptrs)
     env_lower = gymapi.Vec3(
         -config.env_spacing,
         -config.env_spacing,
@@ -98,7 +98,7 @@ def create_env(
     arm_handle = gym.create_actor(
         env=env_ptr,
         asset=sim.parts.arm.asset,
-        pose=config.arm_start_pose,
+        pose=config.arm_config.start_pose,
         name='arm',
         group=env_idx,
         filter=1,
@@ -139,14 +139,14 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
 
     # add the ground
     plane_params = gymapi.PlaneParams()
-    plane_params.normal = gymapi.Vec3(0, 0, 1)
+    # plane_params.normal = gymapi.Vec3(0, 0, 1)
     gym.add_ground(sim, plane_params)
 
     parts: ArmAndBoxSimParts = build_parts(config, sim, gym)
     viewer: gymapi.Viewer = gym.create_viewer(sim, gymapi.CameraProperties())
-    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, viewer, parts)
+    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, viewer, parts, [], [], [])
 
-    for i in config.n_envs:
+    for i in range(config.n_envs):
         create_env(config, arm_and_box_sim, gym)
 
     return arm_and_box_sim
