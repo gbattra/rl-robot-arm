@@ -1,10 +1,8 @@
 #!/bin/bash
 
-./isaacgym/create_conda_env_rlfinal.sh
-
 conda activate rlfinal
 
-pip install --upgrade pip
-pip install -r requirements.txt
-
 chmod +x ./src/*.py
+
+export PYTHONPATH=${PWD}
+export LD_LIBRARY_PATH=${HOME}/miniconda3/envs/rlfinal/lib

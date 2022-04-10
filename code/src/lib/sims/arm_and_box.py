@@ -6,10 +6,9 @@ Env with a robot arm and a box
 '''
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional
 
 from attr import field
-import torch
 from isaacgym import gymapi
 
 
@@ -43,7 +42,7 @@ class ArmAndBoxSimConfig:
 @dataclass
 class Arm:
     asset: gymapi.Asset
-    dof_props: gymapi.GymDofProperties
+    dof_props: Any
     name: str
 
 
@@ -63,11 +62,11 @@ class ArmAndBoxSim:
 
 
 def load_asset(
-        sim: ArmAndBoxSim,
         asset_config: AssetConfig,
+        sim: gymapi.Sim,
         gym: gymapi.Gym) -> gymapi.Asset:
     asset = gym.load_asset(
-        sim.sim,
+        sim,
         asset_config.asset_root,
         asset_config.asset_file,
         asset_config.asset_options)
@@ -114,12 +113,15 @@ def create_env(
     sim.arm_handles.append(arm_handle)
 
 
-def build_parts(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSimParts:
+def build_parts(
+        config: ArmAndBoxSimConfig,
+        sim: gymapi.Sim,
+        gym: gymapi.Gym) -> ArmAndBoxSimParts:
     # add objects / assets
     parts: ArmAndBoxSimParts = ArmAndBoxSimParts()
     
     # load arm asset
-    arm_asset = load_asset(config.arm_config.asset_config)
+    arm_asset = load_asset(config.arm_config.asset_config, sim, gym)
     dof_props = gym.get_asset_dof_properties(arm_asset)
     arm: Arm = Arm(arm_asset, dof_props, 'arm')
     parts.arm = arm
@@ -135,7 +137,12 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         config.sim_params
     )
 
-    parts: ArmAndBoxSimParts = build_parts(config, gym)
+    # add the ground
+    plane_params = gymapi.PlaneParams()
+    plane_params.normal = gymapi.Vec3(0, 0, 1)
+    gym.add_ground(sim, plane_params)
+
+    parts: ArmAndBoxSimParts = build_parts(config, sim, gym)
     viewer: gymapi.Viewer = gym.create_viewer(sim, gymapi.CameraProperties())
     arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, viewer, parts)
 
@@ -151,6 +158,11 @@ def start_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
     '''
     # gym.viewer_camera_look_at(sim.viewer, ...)
     gym.prepare_sim(sim.sim)
+
+
+def destroy_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
+    gym.destroy_viewer(sim.viewer)
+    gym.destroy_sim(sim.sim)
 
 
 def step_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:

@@ -21,7 +21,7 @@ pushd "${ROOT_DIR}/python"
     conda remove -y -n "${ENV_NAME}" --all
 
     # create the env from YAML
-    conda env create -f ./rlgpu_conda_env.yml
+    conda env create -f ./rlfinal_conda_env.yml
     if [ $? -ne 0 ]; then
         echo "*** Failed to create env"
         exit 1
