@@ -5,17 +5,19 @@
 Executable for running the approach task
 '''
 
+from isaacgym import gymapi, gymutil
+
 from typing import Callable
 from lib.rl.buffer import ReplayBuffer
 from lib.rl.dqn import dqn, train_dqn
 from lib.rl.nn import NeuralNetwork, approach_network
-from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, BoxConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
-from isaacgym import gymapi, gymutil
+from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, BoxConfig, ViewerConfig, destroy_sim, initialize_sim
+
 import numpy as np
 import torch
 
-from torch import nn
-from lib.tasks.approach_task import ApproachTask, initialize_approach_task, reset_approach_task, step_approach_task
+from torch import Tensor, nn
+from lib.tasks.approach_task import ApproachTask, ApproachTaskActions, initialize_approach_task, reset_approach_task, step_approach_task
 from lib.tasks.task import Task
 
 
@@ -122,10 +124,11 @@ def main():
     epsilon = lambda t: max(EPS_END, EPS_START * (EPS_DECAY ** t))
 
     results = dqn(
-        reset_task=reset_approach_task,
-        step_task=step_approach_task,
+        reset_task=lambda: reset_approach_task(task, gym),
+        step_task=lambda actions: step_approach_task(task, actions, gym),
         policy_net=policy_net,
         target_net=target_net,
+        buffer=buffer,
         train=train,
         epsilon=epsilon,
         analytics=lambda r, d, p, e, t: None,

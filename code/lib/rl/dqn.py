@@ -5,7 +5,6 @@
 Algorithm for dqn learning
 '''
 
-from re import S
 from tqdm import trange
 from typing import Callable, Dict, Tuple
 
@@ -36,10 +35,10 @@ def dqn(
         step_task: Callable[[Tensor], Tuple[Tensor, Tensor, Tensor, Dict]],
         policy_net: nn.Module,
         target_net: nn.Module,
+        buffer: ReplayBuffer,
         train: Callable[[nn.Module, nn.Module, ReplayBuffer], None],
         epsilon: Callable[[int], float],
         analytics: Callable[[Tensor, Tensor, int, int, int], None],
-        buffer: ReplayBuffer,
         target_update_freq: int,
         n_epochs: int,
         n_episodes: int,

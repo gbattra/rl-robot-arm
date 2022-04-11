@@ -17,7 +17,3 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         return self.network(x)
-
-
-def approach_network() -> nn.Sequential:
-    pass

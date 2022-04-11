@@ -70,6 +70,7 @@ class Box:
 class Arm:
     asset: gymapi.Asset
     dof_props: Any
+    n_dofs: int
     name: str
 
 
@@ -137,7 +138,7 @@ def create_env(
     arm_conf = 0.5 * (arm_dof_props['upper'] + arm_dof_props['lower'])
 
     # set default DOF states
-    default_dof_state = np.zeros(len(arm_dof_props), gymapi.DofState.dtype)
+    default_dof_state = np.zeros(arm.n_dofs, gymapi.DofState.dtype)
     default_dof_state["pos"][:7] = arm_conf[:7]
     
     gym.set_actor_dof_states(env_ptr, arm_handle, default_dof_state, gymapi.STATE_ALL)
@@ -181,7 +182,8 @@ def build_parts(
     dof_props['stiffness'][:].fill(config.arm_config.stiffness)
     dof_props['damping'][:].fill(config.arm_config.damping)
 
-    arm: Arm = Arm(arm_asset, dof_props, 'arm')
+    n_dofs = len(dof_props)
+    arm: Arm = Arm(arm_asset, dof_props, n_dofs, 'arm')
 
     # load box asset
     box_asset = gym.create_box(
