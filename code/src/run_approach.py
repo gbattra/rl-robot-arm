@@ -5,9 +5,11 @@
 Executable for running the approach task
 '''
 
-from lib.sims.arm_and_box import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
+from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
 from isaacgym import gymapi, gymutil
 import numpy as np
+
+from lib.tasks.approach_task import ApproachTask
 
 
 def main():
@@ -60,10 +62,19 @@ def main():
 
     sim: ArmAndBoxSim = initialize_sim(config, gym)
 
+    task: ApproachTask = ApproachTask(
+        current_states=lambda sim, gym: None,
+        choose_actions=lambda states: None,
+        step_sim=lambda sim, actions, gym: (None, None, None, None)
+    )
+
     start_sim(sim, gym)
     while True:
         try:
-            step_sim(sim, gym)
+            current_states = task.current_states(sim, gym)
+            actions = task.choose_actions(current_states)
+            next_states, rewards, dones, _ = task.step_sim(sim, actions, gym)
+
         except KeyboardInterrupt:
             print('Exitting..')
             break

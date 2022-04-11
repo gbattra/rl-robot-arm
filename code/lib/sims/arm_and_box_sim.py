@@ -12,6 +12,8 @@ from attr import field
 from isaacgym import gymapi
 import numpy as np
 
+from lib.sims.sim import Sim
+
 
 @dataclass
 class AssetConfig:
@@ -61,7 +63,7 @@ class ArmAndBoxSimParts:
 
 
 @dataclass
-class ArmAndBoxSim:
+class ArmAndBoxSim(Sim):
     sim: gymapi.Sim
     viewer: gymapi.Viewer
     parts: ArmAndBoxSimParts
@@ -116,7 +118,6 @@ def create_env(
     # get joint limits and ranges for arm
     arm_dof_props = gym.get_asset_dof_properties(sim.parts.arm.asset)
     arm_conf = 0.5 * (arm_dof_props['upper'] + arm_dof_props['lower'])
-    # arm_conf[:-2] = -3.14 / 2.
 
     # set default DOF states
     default_dof_state = np.zeros(len(arm_dof_props), gymapi.DofState.dtype)
@@ -189,7 +190,6 @@ def start_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
     '''
     Start the sim / pre-loop setup
     '''
-    # gym.viewer_camera_look_at(sim.viewer, ...)
     gym.prepare_sim(sim.sim)
 
 
