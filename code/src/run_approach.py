@@ -5,7 +5,7 @@
 Executable for running the approach task
 '''
 
-from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
+from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, BoxConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
 from isaacgym import gymapi, gymutil
 import numpy as np
 import torch
@@ -33,6 +33,10 @@ def main():
     arm_asset_options.collapse_fixed_joints = True
     arm_asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
 
+    # box assset configs
+    box_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
+    box_asset_options.density = 4.
+
     # plane config
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0, 0, 1)
@@ -50,6 +54,16 @@ def main():
             stiffness=8000,
             damping=4000,
             start_pose=gymapi.Transform()
+        ),
+        box_config=BoxConfig(
+            width=0.075,
+            height=0.075,
+            depth=0.075,
+            friction=0.1,
+            start_pose=gymapi.Transform(
+                p=gymapi.Vec3(0, .75, .75)
+            ),
+            asset_options=box_asset_options
         ),
         compute_device=args.compute_device_id,
         graphics_device=args.graphics_device_id,

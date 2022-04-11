@@ -60,7 +60,6 @@ def step_actions(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
         targets,
         torch_utils.to_torch(task.sim.parts.arm.dof_props['lower'], device=device),
         torch_utils.to_torch(task.sim.parts.arm.dof_props['lower'], device=device))
-    print(targets)
     gym.set_dof_position_target_tensor(task.sim.sim, gymtorch.unwrap_tensor(task.dof_targets))
 
     step_sim(task.sim, gym)

@@ -37,6 +37,16 @@ class ViewerConfig:
 
 
 @dataclass
+class BoxConfig:
+    height: float
+    width: float
+    depth: float
+    friction: float
+    start_pose: gymapi.Transform
+    asset_options: gymapi.AssetOptions
+
+
+@dataclass
 class ArmAndBoxSimConfig:
     n_envs: int
     env_spacing: float
@@ -48,6 +58,12 @@ class ArmAndBoxSimConfig:
     sim_params: gymapi.SimParams
     plane_params: gymapi.PlaneParams
     viewer_config: ViewerConfig
+    box_config: BoxConfig
+
+
+@dataclass
+class Box:
+    asset: gymapi.Asset
 
 
 @dataclass
@@ -59,7 +75,8 @@ class Arm:
 
 @dataclass
 class ArmAndBoxSimParts:
-    arm: Optional[Arm] = None
+    arm: Arm
+    box: Box
 
 
 @dataclass
@@ -128,19 +145,35 @@ def create_env(
     gym.enable_actor_dof_force_sensors(env_ptr, arm_handle)
 
     # add box
+    box_handle = gym.create_actor(
+        env=env_ptr,
+        asset=sim.parts.box.asset,
+        pose=config.box_config.start_pose,
+        name='box',
+        group=env_idx,
+        filter=1,
+        segmentationId=0)
+    
+    # add friction to box
+    box_props = gym.get_actor_rigid_shape_properties(env_ptr, box_handle)
+    box_props[0].friction = config.box_config.friction
+    box_props[0].rolling_friction = config.box_config.friction
+    box_props[0].torsion_friction = config.box_config.friction
+    gym.set_actor_rigid_shape_properties(env_ptr, box_handle, box_props)
+
+    # set color of box
+    gym.set_rigid_body_color(env_ptr, box_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(.8, .2, .2))
 
     # register handles with sim
     sim.env_ptrs.append(env_ptr)
     sim.arm_handles.append(arm_handle)
+    sim.box_handles.append(box_handle)
 
 
 def build_parts(
         config: ArmAndBoxSimConfig,
         sim: gymapi.Sim,
         gym: gymapi.Gym) -> ArmAndBoxSimParts:
-    # add objects / assets
-    parts: ArmAndBoxSimParts = ArmAndBoxSimParts()
-    
     # load arm asset
     arm_asset = load_asset(config.arm_config.asset_config, sim, gym)
 
@@ -149,7 +182,17 @@ def build_parts(
     dof_props['damping'][:].fill(config.arm_config.damping)
 
     arm: Arm = Arm(arm_asset, dof_props, 'arm')
-    parts.arm = arm
+
+    # load box asset
+    box_asset = gym.create_box(
+        sim,
+        config.box_config.width,
+        config.box_config.height,
+        config.box_config.depth,
+        config.box_config.asset_options)
+    box: Box = Box(box_asset)
+
+    parts: ArmAndBoxSimParts = ArmAndBoxSimParts(arm, box)
 
     return parts
 
