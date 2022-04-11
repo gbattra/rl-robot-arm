@@ -42,9 +42,9 @@ def main():
     plane_params.normal = gymapi.Vec3(0, 0, 1)
     
     config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=1,
-        env_spacing=10.,
-        n_envs_per_row=1,
+        n_envs=10,
+        env_spacing=1.5,
+        n_envs_per_row=5,
         arm_config=ArmConfig(
             asset_config=AssetConfig(
                 asset_root='assets',
