@@ -77,9 +77,7 @@ def main():
     )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
-
     sim: ArmAndBoxSim = initialize_sim(config, gym)
-
     task: ApproachTask = initialize_task(sim, gym)
 
     start_sim(sim, gym)

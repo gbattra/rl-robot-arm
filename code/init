@@ -1,6 +1,24 @@
 #!/bin/bash
 
+ENV_NAME=rlfinal
+
+# activate env
+conda activate "${ENV_NAME}"
+if [ $? -ne 0 ]; then
+    ./isaacgym/create_conda_env_rlfinal.sh
+fi
+
 conda activate rlfinal
+
+# double check that the correct env is active
+ACTIVE_ENV_NAME="$(basename ${CONDA_PREFIX})"
+if [ "${ENV_NAME}" != "${ACTIVE_ENV_NAME}" ]; then
+    echo "*** Env is not active, aborting"
+    exit 1
+fi
+
+pip install --upgrade pip
+pip install -r requirements.txt
 
 chmod +x ./src/*.py
 

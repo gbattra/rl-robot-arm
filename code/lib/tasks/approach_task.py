@@ -33,23 +33,6 @@ def initialize_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
     )
 
 
-def current_states(task: ApproachTask, gym: gymapi.Gym):
-    '''
-    Compute current state for approach task
-    '''
-    pass
-
-
-def choose_actions(task: ApproachTask, gym: gymapi.Gym):
-    '''
-    Choose an action given the current states
-    '''
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    scale = 0.01
-    return torch.from_numpy(
-        np.ones((len(task.sim.arm_handles), len(task.sim.parts.arm.dof_props))) * scale).to(device)
-
-
 def step_actions(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
     '''
     Step the sim by taking the chosen actions
