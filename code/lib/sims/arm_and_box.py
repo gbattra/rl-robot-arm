@@ -23,12 +23,9 @@ class AssetConfig:
 @dataclass
 class ArmConfig:
     asset_config: AssetConfig
-    # dof: int
-    # drive_mode: gymapi.DofDriveMode
     stiffness: float
     damping: float
     start_pose: gymapi.Transform
-    # default_dof_state: np.ndarray
 
 
 @dataclass
@@ -118,19 +115,16 @@ def create_env(
 
     # get joint limits and ranges for arm
     arm_dof_props = gym.get_asset_dof_properties(sim.parts.arm.asset)
-    arm_lower_limits = arm_dof_props['lower']
-    arm_upper_limits = arm_dof_props['upper']
-    arm_conf = 0.5 * (arm_upper_limits + arm_lower_limits)
-    arm_conf[:-2] = -3.14 / 2.
-    arm_num_dofs = len(arm_dof_props)
+    arm_conf = 0.5 * (arm_dof_props['upper'] + arm_dof_props['lower'])
+    # arm_conf[:-2] = -3.14 / 2.
 
     # set default DOF states
-    default_dof_state = np.zeros(arm_num_dofs, gymapi.DofState.dtype)
+    default_dof_state = np.zeros(len(arm_dof_props), gymapi.DofState.dtype)
     default_dof_state["pos"][:7] = arm_conf[:7]
     
     gym.set_actor_dof_states(env_ptr, arm_handle, default_dof_state, gymapi.STATE_ALL)
     gym.set_actor_dof_properties(env_ptr, arm_handle, sim.parts.arm.dof_props)
-    # gym.enable_actor_dof_force_sensors(env_ptr, arm_handle)
+    gym.enable_actor_dof_force_sensors(env_ptr, arm_handle)
 
     # add box
 
@@ -150,7 +144,6 @@ def build_parts(
     arm_asset = load_asset(config.arm_config.asset_config, sim, gym)
 
     dof_props = gym.get_asset_dof_properties(arm_asset)
-    # dof_props['driveMode'][:].fill(gymapi.DOF_MODE_VEL)
     dof_props['stiffness'][:].fill(config.arm_config.stiffness)
     dof_props['damping'][:].fill(config.arm_config.damping)
 
