@@ -5,13 +5,34 @@
 Executable for running the approach task
 '''
 
+from typing import Callable
+from lib.rl.buffer import ReplayBuffer
+from lib.rl.dqn import dqn, train_dqn
+from lib.rl.nn import NeuralNetwork, approach_network
 from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, BoxConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
 from isaacgym import gymapi, gymutil
 import numpy as np
 import torch
 
-from lib.tasks.approach_task import ApproachTask, choose_actions, initialize_task, step_actions
+from torch import nn
+from lib.tasks.approach_task import ApproachTask, initialize_approach_task, reset_approach_task, step_approach_task
 from lib.tasks.task import Task
+
+
+GAMMA: float = .99
+LEARNING_RATE: float = 0.001
+
+EPS_START: float = 1.
+EPS_END: float = 0.05
+EPS_DECAY: float = 0.999
+
+REPLAY_BUFFER_SIZE: int = 100000
+TARGET_UPDATE_FREQ: int = 10000
+BATCH_SIZE: int = 150
+
+N_EPOCHS: int = 100
+N_EPISODES: int = 1000
+N_STEPS: int = 10000
 
 
 def main():
@@ -78,17 +99,45 @@ def main():
 
     gym: gymapi.Gym = gymapi.acquire_gym()
     sim: ArmAndBoxSim = initialize_sim(config, gym)
-    task: ApproachTask = initialize_task(sim, gym)
+    task: ApproachTask = initialize_approach_task(sim, gym)
 
-    start_sim(sim, gym)
-    while True:
-        try:
-            actions = choose_actions(task, gym)
-            next_states, rewards, dones, _ = step_actions(task, actions, gym)
+    policy_net: nn.Module = NeuralNetwork(approach_network())
+    target_net: nn.Module = NeuralNetwork(approach_network())
+    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+    
+    optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
+    loss_fn = nn.MSELoss()
 
-        except KeyboardInterrupt:
-            print('Exitting..')
-            break
+    train: Callable[[nn.Module, nn.Module, ReplayBuffer], None] = \
+        lambda p_net, t_net, buff: train_dqn(
+            policy_net=p_net,
+            target_net=t_net,
+            buffer=buff,
+            loss_fn=loss_fn,
+            optimizer=optimizer,
+            gamma=GAMMA,
+            batch_size=BATCH_SIZE
+        )
+
+    epsilon = lambda t: max(EPS_END, EPS_START * (EPS_DECAY ** t))
+
+    results = dqn(
+        reset_task=reset_approach_task,
+        step_task=step_approach_task,
+        policy_net=policy_net,
+        target_net=target_net,
+        train=train,
+        epsilon=epsilon,
+        analytics=lambda r, d, p, e, t: None,
+        n_epochs=N_EPOCHS,
+        n_episodes=N_EPISODES,
+        n_steps=N_STEPS
+    )
+
+    try:
+        pass
+    except KeyboardInterrupt:
+        print('Exitting..')
 
     destroy_sim(sim, gym)
 

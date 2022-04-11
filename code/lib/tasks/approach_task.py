@@ -21,7 +21,7 @@ class ApproachTask(Task):
     dof_targets: torch.Tensor
 
 
-def initialize_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
+def initialize_approach_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     return ApproachTask(
@@ -33,7 +33,11 @@ def initialize_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
     )
 
 
-def step_actions(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
+def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
+    pass
+
+
+def step_approach_task(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
     '''
     Step the sim by taking the chosen actions
     '''

@@ -226,14 +226,9 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         config.viewer_config.pos,
         config.viewer_config.look_at)
 
+    gym.prepare_sim(arm_and_box_sim.sim)
+
     return arm_and_box_sim
-
-
-def start_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
-    '''
-    Start the sim / pre-loop setup
-    '''
-    gym.prepare_sim(sim.sim)
 
 
 def destroy_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
