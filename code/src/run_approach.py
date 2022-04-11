@@ -8,11 +8,15 @@ Executable for running the approach task
 from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, ViewerConfig, destroy_sim, initialize_sim, start_sim, step_sim
 from isaacgym import gymapi, gymutil
 import numpy as np
+import torch
 
-from lib.tasks.approach_task import ApproachTask
+from lib.tasks.approach_task import ApproachTask, choose_actions, initialize_task, step_actions
+from lib.tasks.task import Task
 
 
 def main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    
     args = gymutil.parse_arguments()
     
     sim_params: gymapi.SimParams = gymapi.SimParams()
@@ -27,7 +31,7 @@ def main():
     arm_asset_options.armature = 0.01
     arm_asset_options.flip_visual_attachments = True
     arm_asset_options.collapse_fixed_joints = True
-    arm_asset_options.default_dof_drive_mode = gymapi.DOF_MODE_VEL
+    arm_asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
 
     # plane config
     plane_params = gymapi.PlaneParams()
@@ -62,18 +66,13 @@ def main():
 
     sim: ArmAndBoxSim = initialize_sim(config, gym)
 
-    task: ApproachTask = ApproachTask(
-        current_states=lambda sim, gym: None,
-        choose_actions=lambda states: None,
-        step_sim=lambda sim, actions, gym: (None, None, None, None)
-    )
+    task: ApproachTask = initialize_task(sim, gym)
 
     start_sim(sim, gym)
     while True:
         try:
-            current_states = task.current_states(sim, gym)
-            actions = task.choose_actions(current_states)
-            next_states, rewards, dones, _ = task.step_sim(sim, actions, gym)
+            actions = choose_actions(task, gym)
+            next_states, rewards, dones, _ = step_actions(task, actions, gym)
 
         except KeyboardInterrupt:
             print('Exitting..')
