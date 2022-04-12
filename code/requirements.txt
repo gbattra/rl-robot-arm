@@ -1,1 +1,3 @@
 tqdm
+black
+autopep8

@@ -1,9 +1,9 @@
 # Greg Attra
 # 04.11.22
 
-'''
+"""
 Task for training arm to approach target position
-'''
+"""
 
 from enum import IntEnum
 from typing import Callable
@@ -21,31 +21,26 @@ import torch.nn.functional as F
 
 
 class ApproachTaskActions(IntEnum):
-    REV = -1
-    FWD = 1
+    REV = -1.0
+    NEUT = 0.0
+    FWD = 1.0
 
 
 @dataclass
 class ApproachTask(Task):
     sim: ArmAndBoxSim
-    actions: torch.Tensor
     dof_targets: torch.Tensor
 
 
 def initialize_approach_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    actions: torch.Tensor = torch.tensor([
-        ApproachTaskActions.FWD.value,
-        ApproachTaskActions.NEUT.value,
-        ApproachTaskActions.REV.value
-    ])
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     return ApproachTask(
         sim=sim,
-        actions=actions,
         dof_targets=torch.zeros(
             (len(sim.arm_handles), len(sim.parts.arm.dof_props)),
             dtype=torch.float,
-            device=device)
+            device=device,
+        ),
     )
 
 
@@ -54,16 +49,20 @@ def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
 
 
 def step_approach_task(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
-    '''
+    """
     Step the sim by taking the chosen actions
-    '''
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    actions -= 1.0
     targets = task.dof_targets + actions
     targets = torch_utils.tensor_clamp(
         targets,
-        torch_utils.to_torch(task.sim.parts.arm.dof_props['lower'], device=device),
-        torch_utils.to_torch(task.sim.parts.arm.dof_props['lower'], device=device))
-    gym.set_dof_position_target_tensor(task.sim.sim, gymtorch.unwrap_tensor(task.dof_targets))
+        torch_utils.to_torch(task.sim.parts.arm.dof_props["lower"], device=device),
+        torch_utils.to_torch(task.sim.parts.arm.dof_props["lower"], device=device),
+    )
+    gym.set_dof_position_target_tensor(
+        task.sim.sim, gymtorch.unwrap_tensor(task.dof_targets)
+    )
 
     step_sim(task.sim, gym)
 
@@ -72,38 +71,46 @@ def step_approach_task(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gy
 
 def approach_task_network(task: ApproachTask) -> nn.Sequential:
     n_dofs = task.sim.parts.arm.n_dofs
-    n_actions = task.actions.size
+    n_actions = len(ApproachTaskActions)
 
     curent_dof_pos_size = n_dofs
-    current_dof_vel_size = n_dofs,
+    current_dof_vel_size = n_dofs
     target_dof_pos_size = n_dofs
     box_pos_size = 3
 
-    input_size = (curent_dof_pos_size + current_dof_vel_size + target_dof_pos_size + box_pos_size)
-    output_size = (n_actions ** n_dofs)
+    input_size = (
+        curent_dof_pos_size + current_dof_vel_size + target_dof_pos_size + box_pos_size
+    )
+    output_size = n_actions**n_dofs
 
     return nn.Sequential(
         nn.Linear(input_size, 1000),
         nn.ReLU(),
         # nn.Linear(1000, 1000),
         # nn.ReLU(),
-        nn.Linear(1000, output_size)
+        nn.Linear(1000, output_size),
     )
 
 
-def approach_dqn_policy(task: ApproachTask, q_net: nn.Module, epsilon: Callable[[int], float]) \
-        -> Callable[[torch.Tensor, int], torch.Tensor]:
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+def approach_task_dqn_policy(
+    task: ApproachTask, q_net: nn.Module, epsilon: Callable[[int], float]
+) -> Callable[[torch.Tensor, int], torch.Tensor]:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     n_joint_actions = len(ApproachTaskActions)
     n_joints = task.sim.parts.arm.n_dofs
+
     def select_action(X: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
             a_vals: torch.Tensor = q_net(X.float())
             # reshape output to correspond to joints: [N x 21] -> [N x n_joints x n_joint_actions]
-            joint_a_vals: torch.Tensor = a_vals.view((-1,) + (n_joints, n_joint_actions))
+            joint_a_vals: torch.Tensor = a_vals.view(
+                (-1,) + (n_joints, n_joint_actions)
+            )
             if torch.rand(1).item() < epsilon(t):
                 # get random action indices in shape: [N x n_joints]
-                joint_actions = torch.randint(0, n_joint_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1])).to(device)
+                joint_actions = torch.randint(
+                    0, n_joint_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1])
+                ).to(device)
             else:
                 # get max a_vals per joint: [N x n_joints]
                 joint_actions = joint_a_vals.max(-1)[1].to(device)
@@ -113,17 +120,18 @@ def approach_dqn_policy(task: ApproachTask, q_net: nn.Module, epsilon: Callable[
     return select_action
 
 
-def approach_optimize_dqn(
-        task: ApproachTask,
-        buffer: ReplayBuffer,
-        timestep: int,
-        policy_net: nn.Module,
-        target_net: nn.Module,
-        loss_fn: Callable,
-        optimizer: torch.optim.Optimizer,
-        gamma: float,
-        batch_size: int,
-        target_update_freq: int) -> None:
+def approach_task_optimize_dqn(
+    task: ApproachTask,
+    buffer: ReplayBuffer,
+    timestep: int,
+    policy_net: nn.Module,
+    target_net: nn.Module,
+    loss_fn: Callable,
+    optimizer: torch.optim.Optimizer,
+    gamma: float,
+    batch_size: int,
+    target_update_freq: int,
+) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     n_joint_actions = len(ApproachTaskActions)
     n_joints = task.sim.parts.arm.n_dofs
@@ -140,13 +148,13 @@ def approach_optimize_dqn(
     rewards = torch.from_numpy(np.array(batch.reward)).unsqueeze(1).float().to(device)
     dones = torch.from_numpy(np.array(batch.done)).unsqueeze(1).float().to(device)
 
-    target_action_values = target_net(next_states) \
-                        .view((-1,) + (n_joints, n_joint_actions)) \
-                        .max(-1)[0]
-    q_targets = (rewards + (gamma * target_action_values)) * (1. - dones)
-    q_est = policy_net(states) \
-                .view((-1,) + (n_joints, n_joint_actions)) \
-                .gather(-1, actions)
+    target_action_values = (
+        target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
+    )
+    q_targets = (rewards + (gamma * target_action_values)) * (1.0 - dones)
+    q_est = (
+        policy_net(states).view((-1,) + (n_joints, n_joint_actions)).gather(-1, actions)
+    )
 
     loss = loss_fn(q_est, q_targets.unsqueeze(-1))
 
@@ -156,4 +164,3 @@ def approach_optimize_dqn(
 
     if timestep % target_update_freq == 0:
         target_net.load_state_dict(policy_net.state_dict())
-
