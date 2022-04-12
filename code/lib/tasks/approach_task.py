@@ -40,22 +40,6 @@ class ApproachTask(Task):
     dof_targets: torch.Tensor
 
 
-# class ApproachTask(Task):
-#     def __init__(
-#         self,
-#         sim: ArmAndBoxSim,
-#         action_scale: float,
-#         observation_size: int,
-#         action_size: int,
-#         dof_targets: torch.Tensor,
-#     ) -> None:
-#         self.sim: ArmAndBoxSim = sim
-#         self.action_scale: float = action_scale
-#         self.observation_size: int = observation_size
-#         self.action_size: int = action_size
-#         self.dof_targets: torch.Tensor = dof_targets
-
-
 def initialize_approach_task(
     config: ApproachTaskConfig, sim: ArmAndBoxSim, gym: gymapi.Gym
 ) -> ApproachTask:
@@ -202,18 +186,20 @@ def approach_task_optimize_dqn(
     sample = buffer.sample(batch_size)
     batch = Transition(*zip(*sample))
 
-    states = torch.from_numpy(np.array(batch.state)).float().to(device)
-    next_states = torch.from_numpy(np.array(batch.next_state)).float().to(device)
-    actions = torch.from_numpy(np.array(batch.action)).unsqueeze(1).long().to(device)
-    rewards = torch.from_numpy(np.array(batch.reward)).unsqueeze(1).float().to(device)
-    dones = torch.from_numpy(np.array(batch.done)).unsqueeze(1).float().to(device)
+    states = torch.stack(batch.state)
+    next_states = torch.stack(batch.next_state)
+    actions = torch.stack(batch.action)
+    rewards = torch.stack(batch.reward)
+    dones = torch.stack(batch.done)
 
     target_action_values = (
         target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
     )
     q_targets = (rewards + (gamma * target_action_values)) * (1.0 - dones)
     q_est = (
-        policy_net(states).view((-1,) + (n_joints, n_joint_actions)).gather(-1, actions)
+        policy_net(states)
+        .view((-1,) + (n_joints, n_joint_actions))
+        .gather(-1, actions.unsqueeze(-1))
     )
 
     loss = loss_fn(q_est, q_targets.unsqueeze(-1))
