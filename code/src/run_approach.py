@@ -9,7 +9,7 @@ from isaacgym import gymapi, gymutil
 
 from typing import Callable
 from lib.rl.buffer import ReplayBuffer
-from lib.rl.dqn import dqn, train_dqn
+from lib.rl.dqn import dqn, optimize_dqn, train_dqn
 from lib.rl.nn import NeuralNetwork, approach_network
 from lib.sims.arm_and_box_sim import ArmAndBoxSim, ArmAndBoxSimConfig, ArmConfig, AssetConfig, BoxConfig, ViewerConfig, destroy_sim, initialize_sim
 
@@ -17,7 +17,7 @@ import numpy as np
 import torch
 
 from torch import Tensor, nn
-from lib.tasks.approach_task import ApproachTask, ApproachTaskActions, initialize_approach_task, reset_approach_task, step_approach_task
+from lib.tasks.approach_task import ApproachTask, ApproachTaskActions, approach_dqn_policy, initialize_approach_task, reset_approach_task, step_approach_task
 from lib.tasks.task import Task
 
 
@@ -110,26 +110,29 @@ def main():
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
 
-    train: Callable[[nn.Module, nn.Module, ReplayBuffer], None] = \
-        lambda p_net, t_net, buff: train_dqn(
-            policy_net=p_net,
-            target_net=t_net,
+    optimize: Callable[[nn.Module, nn.Module, ReplayBuffer], None] = \
+        lambda buff, t: optimize_dqn(
             buffer=buff,
+            timestep=t,
+            policy_net=policy_net,
+            target_net=target_net,
             loss_fn=loss_fn,
             optimizer=optimizer,
             gamma=GAMMA,
-            batch_size=BATCH_SIZE
+            batch_size=BATCH_SIZE,
+            target_update_freq=TARGET_UPDATE_FREQ
         )
 
     epsilon = lambda t: max(EPS_END, EPS_START * (EPS_DECAY ** t))
 
+    policy: Callable[[Tensor, int], Tensor] = approach_dqn_policy(policy_net, epsilon)
+
     results = dqn(
         reset_task=lambda: reset_approach_task(task, gym),
         step_task=lambda actions: step_approach_task(task, actions, gym),
-        policy_net=policy_net,
-        target_net=target_net,
+        policy=policy,
         buffer=buffer,
-        train=train,
+        optimize=optimize,
         epsilon=epsilon,
         analytics=lambda r, d, p, e, t: None,
         n_epochs=N_EPOCHS,

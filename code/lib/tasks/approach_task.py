@@ -6,8 +6,10 @@ Task for training arm to approach target position
 '''
 
 from enum import IntEnum
+from typing import Callable
 from isaacgym import gymapi, gymtorch, torch_utils
 from dataclasses import dataclass
+from lib.rl.buffer import ReplayBuffer, Transition
 
 from lib.sims.arm_and_box_sim import ArmAndBoxSim, step_sim
 from lib.sims.sim import Sim
@@ -15,12 +17,12 @@ from lib.tasks.task import Task
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class ApproachTaskActions(IntEnum):
-    FWD = 1
-    NEUT = 0
     REV = -1
+    FWD = 1
 
 
 @dataclass
@@ -78,7 +80,7 @@ def approach_task_network(task: ApproachTask) -> nn.Sequential:
     box_pos_size = 3
 
     input_size = (curent_dof_pos_size + current_dof_vel_size + target_dof_pos_size + box_pos_size)
-    output_size = (n_dofs ** n_actions)
+    output_size = (n_actions ** n_dofs)
 
     return nn.Sequential(
         nn.Linear(input_size, 1000),
@@ -87,3 +89,71 @@ def approach_task_network(task: ApproachTask) -> nn.Sequential:
         # nn.ReLU(),
         nn.Linear(1000, output_size)
     )
+
+
+def approach_dqn_policy(task: ApproachTask, q_net: nn.Module, epsilon: Callable[[int], float]) \
+        -> Callable[[torch.Tensor, int], torch.Tensor]:
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    n_joint_actions = len(ApproachTaskActions)
+    n_joints = task.sim.parts.arm.n_dofs
+    def select_action(X: torch.Tensor, t: int) -> torch.Tensor:
+        with torch.no_grad():
+            a_vals: torch.Tensor = q_net(X.float())
+            # reshape output to correspond to joints: [N x 21] -> [N x n_joints x n_joint_actions]
+            joint_a_vals: torch.Tensor = a_vals.view((-1,) + (n_joints, n_joint_actions))
+            if torch.rand(1).item() < epsilon(t):
+                # get random action indices in shape: [N x n_joints]
+                joint_actions = torch.randint(0, n_joint_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1])).to(device)
+            else:
+                # get max a_vals per joint: [N x n_joints]
+                joint_actions = joint_a_vals.max(-1)[1].to(device)
+
+        return joint_actions
+
+    return select_action
+
+
+def approach_optimize_dqn(
+        task: ApproachTask,
+        buffer: ReplayBuffer,
+        timestep: int,
+        policy_net: nn.Module,
+        target_net: nn.Module,
+        loss_fn: Callable,
+        optimizer: torch.optim.Optimizer,
+        gamma: float,
+        batch_size: int,
+        target_update_freq: int) -> None:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    n_joint_actions = len(ApproachTaskActions)
+    n_joints = task.sim.parts.arm.n_dofs
+
+    if len(buffer) < batch_size:
+        return
+
+    sample = buffer.sample(batch_size)
+    batch = Transition(*zip(*sample))
+
+    states = torch.from_numpy(np.array(batch.state)).float().to(device)
+    next_states = torch.from_numpy(np.array(batch.next_state)).float().to(device)
+    actions = torch.from_numpy(np.array(batch.action)).unsqueeze(1).long().to(device)
+    rewards = torch.from_numpy(np.array(batch.reward)).unsqueeze(1).float().to(device)
+    dones = torch.from_numpy(np.array(batch.done)).unsqueeze(1).float().to(device)
+
+    target_action_values = target_net(next_states) \
+                        .view((-1,) + (n_joints, n_joint_actions)) \
+                        .max(-1)[0]
+    q_targets = (rewards + (gamma * target_action_values)) * (1. - dones)
+    q_est = policy_net(states) \
+                .view((-1,) + (n_joints, n_joint_actions)) \
+                .gather(-1, actions)
+
+    loss = loss_fn(q_est, q_targets.unsqueeze(-1))
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    if timestep % target_update_freq == 0:
+        target_net.load_state_dict(policy_net.state_dict())
+
