@@ -6,7 +6,7 @@ Task for training arm to approach target position
 """
 
 from enum import IntEnum
-from typing import Callable
+from typing import Callable, Dict, Tuple
 from isaacgym import gymapi, gymtorch, torch_utils
 from dataclasses import dataclass
 from lib.rl.buffer import ReplayBuffer, Transition
@@ -27,15 +27,57 @@ class ApproachTaskActions(IntEnum):
 
 
 @dataclass
+class ApproachTaskConfig:
+    action_scale: float
+
+
+@dataclass
 class ApproachTask(Task):
     sim: ArmAndBoxSim
+    action_scale: float
+    observation_size: int
+    action_size: int
     dof_targets: torch.Tensor
 
 
-def initialize_approach_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask:
+# class ApproachTask(Task):
+#     def __init__(
+#         self,
+#         sim: ArmAndBoxSim,
+#         action_scale: float,
+#         observation_size: int,
+#         action_size: int,
+#         dof_targets: torch.Tensor,
+#     ) -> None:
+#         self.sim: ArmAndBoxSim = sim
+#         self.action_scale: float = action_scale
+#         self.observation_size: int = observation_size
+#         self.action_size: int = action_size
+#         self.dof_targets: torch.Tensor = dof_targets
+
+
+def initialize_approach_task(
+    config: ApproachTaskConfig, sim: ArmAndBoxSim, gym: gymapi.Gym
+) -> ApproachTask:
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    n_dofs = sim.parts.arm.n_dofs
+    n_actions = len(ApproachTaskActions)
+
+    curent_dof_pos_size = n_dofs
+    current_dof_vel_size = n_dofs
+    target_dof_pos_size = n_dofs
+    box_pos_size = 3
+
+    obs_size = (
+        curent_dof_pos_size + current_dof_vel_size + target_dof_pos_size + box_pos_size
+    )
+    action_size = n_actions * n_dofs
+
     return ApproachTask(
         sim=sim,
+        action_scale=config.action_scale,
+        observation_size=obs_size,
+        action_size=action_size,
         dof_targets=torch.zeros(
             (len(sim.arm_handles), len(sim.parts.arm.dof_props)),
             dtype=torch.float,
@@ -44,51 +86,69 @@ def initialize_approach_task(sim: ArmAndBoxSim, gym: gymapi.Gym) -> ApproachTask
     )
 
 
+def compute_approach_task_observations(
+    task: ApproachTask, gym: gymapi.Gym
+) -> torch.Tensor:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.zeros((len(task.sim.env_ptrs), task.observation_size)).to(device)
+
+
+def compute_approach_task_rewards(
+    task: ApproachTask, observations: torch.Tensor, gym: gymapi.Gym
+) -> torch.Tensor:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.zeros((observations.shape[0], 1)).to(device)
+
+
+def compute_approach_task_dones(
+    task: ApproachTask, observations: torch.Tensor, gym: gymapi.Gym
+) -> torch.Tensor:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.zeros((observations.shape[0], 1)).to(device)
+
+
 def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
-    pass
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.zeros((len(task.sim.env_ptrs), task.observation_size)).to(device)
 
 
-def step_approach_task(task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym):
+def step_approach_task(
+    task: ApproachTask, actions: torch.Tensor, gym: gymapi.Gym
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
     """
     Step the sim by taking the chosen actions
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    actions -= 1.0
+    actions = (actions.float() - 1.0) * task.action_scale
     targets = task.dof_targets + actions
     targets = torch_utils.tensor_clamp(
         targets,
         torch_utils.to_torch(task.sim.parts.arm.dof_props["lower"], device=device),
-        torch_utils.to_torch(task.sim.parts.arm.dof_props["lower"], device=device),
+        torch_utils.to_torch(task.sim.parts.arm.dof_props["upper"], device=device),
     )
+
+    task.dof_targets = targets
+
     gym.set_dof_position_target_tensor(
         task.sim.sim, gymtorch.unwrap_tensor(task.dof_targets)
     )
 
     step_sim(task.sim, gym)
 
-    return None, None, None, None
+    observations = compute_approach_task_observations(task, gym)
+    rewards = compute_approach_task_rewards(task, observations, gym)
+    dones = compute_approach_task_dones(task, observations, gym)
+
+    return observations, rewards, dones, {}
 
 
 def approach_task_network(task: ApproachTask) -> nn.Sequential:
-    n_dofs = task.sim.parts.arm.n_dofs
-    n_actions = len(ApproachTaskActions)
-
-    curent_dof_pos_size = n_dofs
-    current_dof_vel_size = n_dofs
-    target_dof_pos_size = n_dofs
-    box_pos_size = 3
-
-    input_size = (
-        curent_dof_pos_size + current_dof_vel_size + target_dof_pos_size + box_pos_size
-    )
-    output_size = n_actions**n_dofs
-
     return nn.Sequential(
-        nn.Linear(input_size, 1000),
+        nn.Linear(task.observation_size, 1000),
         nn.ReLU(),
         # nn.Linear(1000, 1000),
         # nn.ReLU(),
-        nn.Linear(1000, output_size),
+        nn.Linear(1000, task.action_size),
     )
 
 
@@ -101,11 +161,11 @@ def approach_task_dqn_policy(
 
     def select_action(X: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
-            a_vals: torch.Tensor = q_net(X.float())
+            a_vals: torch.Tensor = q_net(X).to(device)
             # reshape output to correspond to joints: [N x 21] -> [N x n_joints x n_joint_actions]
             joint_a_vals: torch.Tensor = a_vals.view(
                 (-1,) + (n_joints, n_joint_actions)
-            )
+            ).to(device)
             if torch.rand(1).item() < epsilon(t):
                 # get random action indices in shape: [N x n_joints]
                 joint_actions = torch.randint(

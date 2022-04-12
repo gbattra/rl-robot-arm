@@ -27,6 +27,7 @@ from torch import Tensor, nn
 from lib.tasks.approach_task import (
     ApproachTask,
     ApproachTaskActions,
+    ApproachTaskConfig,
     approach_task_dqn_policy,
     approach_task_optimize_dqn,
     approach_task_network,
@@ -78,7 +79,7 @@ def main():
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
-    config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
+    sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
         n_envs=10,
         env_spacing=1.5,
         n_envs_per_row=5,
@@ -110,12 +111,14 @@ def main():
         ),
     )
 
-    gym: gymapi.Gym = gymapi.acquire_gym()
-    sim: ArmAndBoxSim = initialize_sim(config, gym)
-    task: ApproachTask = initialize_approach_task(sim, gym)
+    task_config: ApproachTaskConfig = ApproachTaskConfig(action_scale=0.1)
 
-    policy_net: nn.Module = NeuralNetwork(approach_task_network(task))
-    target_net: nn.Module = NeuralNetwork(approach_task_network(task))
+    gym: gymapi.Gym = gymapi.acquire_gym()
+    sim: ArmAndBoxSim = initialize_sim(sim_config, gym)
+    task: ApproachTask = initialize_approach_task(task_config, sim, gym)
+
+    policy_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
+    target_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
