@@ -6,7 +6,7 @@ Task for training arm to approach target position
 """
 
 from enum import IntEnum
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 from isaacgym import gymapi, gymtorch, torch_utils
 from dataclasses import dataclass
 from lib.rl.buffer import ReplayBuffer, Transition
@@ -111,25 +111,44 @@ def compute_approach_task_dones(
     return dones.unsqueeze(-1)
 
 
-def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
+def reset_approach_task(
+    task: ApproachTask, gym: gymapi.Gym, dones: Optional[torch.Tensor]
+) -> torch.Tensor:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # set default DOF states
-    arm_conf = torch.from_numpy(
-        0.5
-        * (
-            task.sim.parts.arm.dof_props["upper"]
-            + task.sim.parts.arm.dof_props["lower"]
-        )
-    )
+    reset_envs = torch.arange(task.sim.n_envs).to(device)
+    if dones is not None:
+        done_envs = dones.nonzero(as_tuple=False).unsqueeze(-1)
+        reset_envs = reset_envs[done_envs].to(device)
 
-    default_dof_state = torch.zeros(task.sim.n_envs, 2, task.sim.parts.arm.n_dofs).to(
-        device
+    # set default DOF states
+    arm_confs: torch.Tensor = torch.rand(
+        (len(reset_envs), task.sim.parts.arm.n_dofs), device=device
     )
-    default_dof_state[:, 0, :7] = arm_conf[:7]
-    task.sim.dof_positions = default_dof_state[:, 0, :]
-    task.sim.dof_velocities = default_dof_state[:, 1, :]
-    task.dof_targets = default_dof_state[:, 0, :]
+    arm_confs = torch_utils.tensor_clamp(
+        arm_confs,
+        torch_utils.to_torch(task.sim.parts.arm.dof_props["lower"], device=device),
+        torch_utils.to_torch(task.sim.parts.arm.dof_props["upper"], device=device),
+    )
+    # default_dof_state = torch.zeros(2, task.sim.parts.arm.n_dofs).to(device)
+    # default_dof_state[0, :7] = arm_conf[:7]
+    task.sim.dof_positions[reset_envs, :] = torch.zeros_like(
+        task.sim.dof_positions[reset_envs], device=device
+    )
+    task.sim.dof_positions[reset_envs, :7] = arm_confs[:, :7]
+    task.sim.dof_velocities[reset_envs, :] = torch.zeros_like(
+        task.sim.dof_velocities[reset_envs], device=device
+    )
+    task.dof_targets[reset_envs, :] = arm_confs[:]
+
+    reset_envs = reset_envs.to(dtype=torch.int32).to(device)
+    # gym.set_dof_state_tensor_indexed(
+    #     task.sim.sim,
+    #     gymtorch.unwrap_tensor(task.sim.dof_states),
+    #     gymtorch.unwrap_tensor(reset_envs),
+    #     len(reset_envs),
+    # )
+    gym.set_dof_state_tensor(task.sim.sim, gymtorch.unwrap_tensor(task.sim.dof_states))
 
     return compute_approach_task_observations(task, gym)
 
@@ -150,6 +169,7 @@ def step_approach_task(
     )
 
     task.dof_targets = targets
+    print(task.dof_targets[0])
 
     gym.set_dof_position_target_tensor(
         task.sim.sim, gymtorch.unwrap_tensor(task.dof_targets)

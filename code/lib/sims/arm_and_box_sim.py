@@ -94,6 +94,7 @@ class ArmAndBoxSim(Sim):
     env_ptrs: List
     arm_handles: List
     box_handles: List
+    dof_states: torch.Tensor
     dof_positions: torch.Tensor
     dof_velocities: torch.Tensor
     box_poses: torch.Tensor
@@ -245,8 +246,8 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     # get dof state buffer
     _dof_states = gym.acquire_dof_state_tensor(sim)
     dof_states = gymtorch.wrap_tensor(_dof_states)
-    dof_pos = dof_states[:, 0].view(config.n_envs, parts.arm.n_dofs)
-    dof_vel = dof_states[:, 1].view(config.n_envs, parts.arm.n_dofs)
+    dof_pos = dof_states.view(config.n_envs, -1, 2)[..., 0]
+    dof_vel = dof_states.view(config.n_envs, -1, 2)[..., 1]
 
     # get hand poses
     _rb_states = gym.acquire_rigid_body_state_tensor(sim)
@@ -267,6 +268,7 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         env_ptrs=env_ptrs,
         arm_handles=arm_handles,
         box_handles=box_handles,
+        dof_states=dof_states,
         dof_positions=dof_pos,
         dof_velocities=dof_vel,
         box_poses=box_poses,

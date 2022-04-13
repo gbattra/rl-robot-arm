@@ -152,7 +152,7 @@ def main():
     )
 
     results = dqn(
-        reset_task=lambda: reset_approach_task(task, gym),
+        reset_task=lambda dones: reset_approach_task(task, gym, dones),
         step_task=lambda actions: step_approach_task(task, actions, gym),
         policy=policy,
         buffer=buffer,
