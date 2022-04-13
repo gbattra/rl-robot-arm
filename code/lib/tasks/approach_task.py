@@ -29,6 +29,7 @@ class ApproachTaskActions(IntEnum):
 @dataclass
 class ApproachTaskConfig:
     action_scale: float
+    distance_threshold: float
 
 
 @dataclass
@@ -38,6 +39,7 @@ class ApproachTask(Task):
     observation_size: int
     action_size: int
     dof_targets: torch.Tensor
+    distance_threshold: float
 
 
 def initialize_approach_task(
@@ -67,6 +69,7 @@ def initialize_approach_task(
             dtype=torch.float,
             device=device,
         ),
+        distance_threshold=config.distance_threshold,
     )
 
 
@@ -78,7 +81,7 @@ def compute_approach_task_observations(
             task.sim.dof_positions,
             task.sim.dof_velocities,
             task.dof_targets,
-            task.sim.box_positions,
+            task.sim.box_poses[:, 0:3],
         ),
         axis=1,
     )
@@ -89,14 +92,23 @@ def compute_approach_task_rewards(
     task: ApproachTask, observations: torch.Tensor, gym: gymapi.Gym
 ) -> torch.Tensor:
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    return torch.zeros((observations.shape[0], 1)).to(device)
+    distances: torch.Tensor = torch.norm(
+        task.sim.hand_poses[:, 0:3] - task.sim.box_poses[:, 0:3], p=2, dim=-1
+    ).to(device)
+    dones: torch.Tensor = distances.le(task.distance_threshold).to(device)
+    rwds: torch.Tensor = torch.ones(dones.shape).to(device) * dones
+    return rwds.unsqueeze(-1)
 
 
 def compute_approach_task_dones(
     task: ApproachTask, observations: torch.Tensor, gym: gymapi.Gym
 ) -> torch.Tensor:
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    return torch.zeros((observations.shape[0], 1)).to(device)
+    distances: torch.Tensor = torch.norm(
+        task.sim.hand_poses[:, 0:3] - task.sim.box_poses[:, 0:3], p=2, dim=-1
+    ).to(device)
+    dones: torch.Tensor = distances.le(task.distance_threshold).to(device)
+    return dones.unsqueeze(-1)
 
 
 def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
@@ -203,7 +215,7 @@ def approach_task_optimize_dqn(
     target_action_values = (
         target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
     )
-    q_targets = (rewards + (gamma * target_action_values)) * (1.0 - dones)
+    q_targets = rewards + (gamma * target_action_values * dones)
     q_est = (
         policy_net(states)
         .view((-1,) + (n_joints, n_joint_actions))

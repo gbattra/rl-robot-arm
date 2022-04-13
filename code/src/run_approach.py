@@ -85,6 +85,7 @@ def main():
         n_envs_per_row=10,
         n_actors_per_env=2,
         arm_config=ArmConfig(
+            hand_link="panda_link7",
             asset_config=AssetConfig(
                 asset_root="assets",
                 asset_file="urdf/franka_description/robots/franka_panda.urdf",
@@ -112,7 +113,9 @@ def main():
         ),
     )
 
-    task_config: ApproachTaskConfig = ApproachTaskConfig(action_scale=0.1)
+    task_config: ApproachTaskConfig = ApproachTaskConfig(
+        action_scale=0.1, distance_threshold=0.25
+    )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
     sim: ArmAndBoxSim = initialize_sim(sim_config, gym)

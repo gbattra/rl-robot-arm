@@ -26,6 +26,7 @@ class AssetConfig:
 
 @dataclass
 class ArmConfig:
+    hand_link: str
     asset_config: AssetConfig
     stiffness: float
     damping: float
@@ -94,7 +95,8 @@ class ArmAndBoxSim(Sim):
     box_handles: List
     dof_positions: torch.Tensor
     dof_velocities: torch.Tensor
-    box_positions: torch.Tensor
+    box_poses: torch.Tensor
+    hand_poses: torch.Tensor
 
 
 def load_asset(
@@ -155,7 +157,7 @@ def create_env(
         pose=config.box_config.start_pose,
         name="box",
         group=env_idx,
-        filter=1,
+        filter=0,
         segmentationId=0,
     )
 
@@ -245,12 +247,16 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     dof_pos = dof_states[:, 0].view(config.n_envs, parts.arm.n_dofs)
     dof_vel = dof_states[:, 1].view(config.n_envs, parts.arm.n_dofs)
 
-    # get position buffer for boxes
-    _root_states = gym.acquire_actor_root_state_tensor(sim)
-    root_states = gymtorch.wrap_tensor(_root_states).view(
-        config.n_envs, config.n_actors_per_env, 13
+    # get hand poses
+    _rb_states = gym.acquire_rigid_body_state_tensor(sim)
+    rb_states = gymtorch.wrap_tensor(_rb_states).view(config.n_envs, -1, 13)
+
+    hand_idx: int = gym.find_actor_rigid_body_handle(
+        env_ptrs[0], arm_handles[0], config.arm_config.hand_link
     )
-    box_positions: torch.Tensor = root_states[:, 1, 0:3]
+    hand_poses: torch.Tensor = rb_states[:, hand_idx]
+
+    box_poses: torch.Tensor = rb_states[:, -1]
 
     arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(
         sim=sim,
@@ -261,7 +267,8 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         box_handles=box_handles,
         dof_positions=dof_pos,
         dof_velocities=dof_vel,
-        box_positions=box_positions,
+        box_poses=box_poses,
+        hand_poses=hand_poses,
     )
 
     return arm_and_box_sim
