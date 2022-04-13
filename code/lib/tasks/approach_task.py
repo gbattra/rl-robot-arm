@@ -113,7 +113,25 @@ def compute_approach_task_dones(
 
 def reset_approach_task(task: ApproachTask, gym: gymapi.Gym) -> torch.Tensor:
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    return torch.zeros((len(task.sim.env_ptrs), task.observation_size)).to(device)
+
+    # set default DOF states
+    arm_conf = torch.from_numpy(
+        0.5
+        * (
+            task.sim.parts.arm.dof_props["upper"]
+            + task.sim.parts.arm.dof_props["lower"]
+        )
+    )
+
+    default_dof_state = torch.zeros(task.sim.n_envs, 2, task.sim.parts.arm.n_dofs).to(
+        device
+    )
+    default_dof_state[:, 0, :7] = arm_conf[:7]
+    task.sim.dof_positions = default_dof_state[:, 0, :]
+    task.sim.dof_velocities = default_dof_state[:, 1, :]
+    task.dof_targets = default_dof_state[:, 0, :]
+
+    return compute_approach_task_observations(task, gym)
 
 
 def step_approach_task(

@@ -90,6 +90,7 @@ class ArmAndBoxSim(Sim):
     sim: gymapi.Sim
     viewer: Optional[gymapi.Viewer]
     parts: ArmAndBoxSimParts
+    n_envs: int
     env_ptrs: List
     arm_handles: List
     box_handles: List
@@ -262,6 +263,7 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         sim=sim,
         viewer=viewer,
         parts=parts,
+        n_envs=config.n_envs,
         env_ptrs=env_ptrs,
         arm_handles=arm_handles,
         box_handles=box_handles,
