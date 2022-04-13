@@ -6,6 +6,7 @@ Env with a robot arm and a box
 """
 
 from dataclasses import dataclass
+from optparse import Option
 from typing import Any, List, Optional
 
 from attr import field
@@ -32,6 +33,7 @@ class ArmConfig:
 
 @dataclass
 class ViewerConfig:
+    headless: bool
     pos: gymapi.Vec3
     look_at: gymapi.Vec3
 
@@ -83,7 +85,7 @@ class ArmAndBoxSimParts:
 @dataclass
 class ArmAndBoxSim(Sim):
     sim: gymapi.Sim
-    viewer: gymapi.Viewer
+    viewer: Optional[gymapi.Viewer]
     parts: ArmAndBoxSimParts
     env_ptrs: List
     arm_handles: List
@@ -102,18 +104,26 @@ def load_asset(
     return asset
 
 
-def create_env(config: ArmAndBoxSimConfig, sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
-    assert sim.parts.arm is not None, "sim.parts.arm is None"
+def create_env(
+    config: ArmAndBoxSimConfig,
+    parts: ArmAndBoxSimParts,
+    env_ptrs: List,
+    arm_handles: List,
+    box_handles: List,
+    sim: gymapi.Sim,
+    gym: gymapi.Gym,
+) -> None:
+    assert parts.arm is not None, "sim.parts.arm is None"
 
-    env_idx = len(sim.env_ptrs)
+    env_idx = len(env_ptrs)
     env_lower = gymapi.Vec3(-config.env_spacing, -config.env_spacing, 0)
     env_upper = gymapi.Vec3(config.env_spacing, config.env_spacing, config.env_spacing)
-    env_ptr = gym.create_env(sim.sim, env_lower, env_upper, config.n_envs_per_row)
+    env_ptr = gym.create_env(sim, env_lower, env_upper, config.n_envs_per_row)
 
     # add arm actor
     arm_handle = gym.create_actor(
         env=env_ptr,
-        asset=sim.parts.arm.asset,
+        asset=parts.arm.asset,
         pose=config.arm_config.start_pose,
         name="arm",
         group=env_idx,
@@ -122,21 +132,21 @@ def create_env(config: ArmAndBoxSimConfig, sim: ArmAndBoxSim, gym: gymapi.Gym) -
     )
 
     # get joint limits and ranges for arm
-    arm_dof_props = gym.get_asset_dof_properties(sim.parts.arm.asset)
+    arm_dof_props = gym.get_asset_dof_properties(parts.arm.asset)
     arm_conf = 0.5 * (arm_dof_props["upper"] + arm_dof_props["lower"])
 
     # set default DOF states
-    default_dof_state = np.zeros(sim.parts.arm.n_dofs, gymapi.DofState.dtype)
+    default_dof_state = np.zeros(parts.arm.n_dofs, gymapi.DofState.dtype)
     default_dof_state["pos"][:7] = arm_conf[:7]
 
     gym.set_actor_dof_states(env_ptr, arm_handle, default_dof_state, gymapi.STATE_ALL)
-    gym.set_actor_dof_properties(env_ptr, arm_handle, sim.parts.arm.dof_props)
+    gym.set_actor_dof_properties(env_ptr, arm_handle, parts.arm.dof_props)
     gym.enable_actor_dof_force_sensors(env_ptr, arm_handle)
 
     # add box
     box_handle = gym.create_actor(
         env=env_ptr,
-        asset=sim.parts.box.asset,
+        asset=parts.box.asset,
         pose=config.box_config.start_pose,
         name="box",
         group=env_idx,
@@ -157,9 +167,9 @@ def create_env(config: ArmAndBoxSimConfig, sim: ArmAndBoxSim, gym: gymapi.Gym) -
     )
 
     # register handles with sim
-    sim.env_ptrs.append(env_ptr)
-    sim.arm_handles.append(arm_handle)
-    sim.box_handles.append(box_handle)
+    env_ptrs.append(env_ptr)
+    arm_handles.append(arm_handle)
+    box_handles.append(box_handle)
 
 
 def build_parts(
@@ -204,23 +214,34 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     # load assets and build models
     parts: ArmAndBoxSimParts = build_parts(config, sim, gym)
 
-    # setup viewer
-    viewer: gymapi.Viewer = gym.create_viewer(sim, gymapi.CameraProperties())
-
-    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(sim, viewer, parts, [], [], [])
-
+    env_ptrs = []
+    arm_handles = []
+    box_handles = []
     for i in range(config.n_envs):
-        create_env(config, arm_and_box_sim, gym)
+        create_env(config, parts, env_ptrs, arm_handles, box_handles, sim, gym)
 
-    # look at middle of scene
-    gym.viewer_camera_look_at(
-        viewer,
-        arm_and_box_sim.env_ptrs[config.n_envs // 2 + config.n_envs_per_row // 2],
-        config.viewer_config.pos,
-        config.viewer_config.look_at,
+    # setup viewer
+    viewer: Optional[gymapi.Viewer] = None
+    if not config.viewer_config.headless:
+        viewer = gym.create_viewer(sim, gymapi.CameraProperties())
+        # look at middle of scene
+        gym.viewer_camera_look_at(
+            viewer,
+            env_ptrs[config.n_envs // 2 + config.n_envs_per_row // 2],
+            config.viewer_config.pos,
+            config.viewer_config.look_at,
+        )
+
+    gym.prepare_sim(sim)
+
+    arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(
+        sim=sim,
+        viewer=viewer,
+        parts=parts,
+        env_ptrs=env_ptrs,
+        arm_handles=arm_handles,
+        box_handles=box_handles,
     )
-
-    gym.prepare_sim(arm_and_box_sim.sim)
 
     return arm_and_box_sim
 

@@ -27,7 +27,6 @@ def dqn(
     n_episodes: int,
     n_steps: int,
 ) -> Dict:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     for p in trange(n_epochs, desc="Epoch", leave=False):
         for e in trange(n_episodes, desc="Episode", leave=False):
             s = reset_task()

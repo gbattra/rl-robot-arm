@@ -80,9 +80,9 @@ def main():
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
     sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=10,
+        n_envs=100,
         env_spacing=1.5,
-        n_envs_per_row=5,
+        n_envs_per_row=10,
         arm_config=ArmConfig(
             asset_config=AssetConfig(
                 asset_root="assets",
@@ -107,7 +107,7 @@ def main():
         sim_params=sim_params,
         plane_params=plane_params,
         viewer_config=ViewerConfig(
-            pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
+            headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
         ),
     )
 
