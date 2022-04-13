@@ -1,16 +1,18 @@
 # Greg Attra
 # 04.11.22
 
-'''
+"""
 Buffer functions. Some code inspired by https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
-'''
+"""
 
 from collections import deque, namedtuple
 import random
 from typing import List
 
 
-Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
+Transition = namedtuple(
+    "Transition", ("state", "action", "next_state", "reward", "done")
+)
 
 
 class ReplayBuffer:

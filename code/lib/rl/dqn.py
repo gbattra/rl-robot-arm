@@ -23,7 +23,7 @@ def dqn(
     policy: Callable[[Tensor, int], Tensor],
     buffer: ReplayBuffer,
     optimize: Callable[[ReplayBuffer, int], None],
-    analytics: Callable[[Tensor, Tensor, int, int, int], None],
+    analytics: Callable[[Tensor, Tensor, float, int, int, int], None],
     n_epochs: int,
     n_episodes: int,
     n_steps: int,
@@ -40,9 +40,8 @@ def dqn(
                 for i in range(s.shape[0]):
                     buffer.add(Transition(s[i], a[i], s_prime[i], r[i], done[i]))
 
-                analytics(r, done, p, e, s)
-
-                optimize(buffer, t)
+                loss = optimize(buffer, t)
+                analytics(r, done, loss, p, e, s)
 
                 # reset envs which have finished task
                 reset_task(done)

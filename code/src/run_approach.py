@@ -45,7 +45,7 @@ EPS_END: float = 0.05
 EPS_DECAY: float = 0.999
 
 REPLAY_BUFFER_SIZE: int = 100000
-TARGET_UPDATE_FREQ: int = 10000
+TARGET_UPDATE_FREQ: int = 1000
 BATCH_SIZE: int = 150
 
 N_EPOCHS: int = 100
@@ -159,7 +159,7 @@ def main():
         policy=policy,
         buffer=buffer,
         optimize=optimize,
-        analytics=lambda r, d, p, e, t: None,
+        analytics=lambda r, d, l, p, e, t: None,
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
         n_steps=N_STEPS,

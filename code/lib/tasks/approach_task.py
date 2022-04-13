@@ -136,11 +136,6 @@ def reset_approach_task(
     task.sim.dof_positions[reset_envs, :] = torch.zeros_like(
         task.sim.dof_positions[reset_envs], device=device
     )
-    print("----------")
-    print(task.sim.dof_positions.shape)
-    print(reset_envs.shape)
-    print(reset_envs)
-    print("----------")
     task.sim.dof_positions[reset_envs, :7] = arm_confs[:, :7]
     task.sim.dof_velocities[reset_envs, :] = torch.zeros_like(
         task.sim.dof_velocities[reset_envs], device=device
@@ -232,12 +227,12 @@ def approach_task_optimize_dqn(
     gamma: float,
     batch_size: int,
     target_update_freq: int,
-) -> None:
+) -> float:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     n_joint_actions = len(ApproachTaskActions)
     n_joints = task.sim.parts.arm.n_dofs
 
-    if len(buffer) < batch_size:
+    if timestep < batch_size:
         return
 
     sample = buffer.sample(batch_size)
@@ -252,7 +247,11 @@ def approach_task_optimize_dqn(
     target_action_values = (
         target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
     )
-    q_targets = rewards + (gamma * target_action_values * dones)
+    print(rewards.shape)
+    print(target_action_values.shape)
+    print(dones.shape)
+    print("-------")
+    q_targets = rewards + (gamma * target_action_values * ~dones)
     q_est = (
         policy_net(states)
         .view((-1,) + (n_joints, n_joint_actions))
@@ -266,4 +265,7 @@ def approach_task_optimize_dqn(
     optimizer.step()
 
     if timestep % target_update_freq == 0:
+        print(loss)
         target_net.load_state_dict(policy_net.state_dict())
+
+    return loss
