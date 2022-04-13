@@ -31,6 +31,7 @@ from lib.tasks.approach_task import (
     approach_task_dqn_policy,
     approach_task_optimize_dqn,
     approach_task_network,
+    compute_approach_task_observations,
     initialize_approach_task,
     reset_approach_task,
     step_approach_task,
@@ -153,6 +154,7 @@ def main():
 
     results = dqn(
         reset_task=lambda dones: reset_approach_task(task, gym, dones),
+        get_observations=lambda: compute_approach_task_observations(task, gym),
         step_task=lambda actions: step_approach_task(task, actions, gym),
         policy=policy,
         buffer=buffer,
