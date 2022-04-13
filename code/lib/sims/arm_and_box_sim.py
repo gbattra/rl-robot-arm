@@ -10,8 +10,9 @@ from optparse import Option
 from typing import Any, List, Optional
 
 from attr import field
-from isaacgym import gymapi
+from isaacgym import gymapi, gymtorch
 import numpy as np
+import torch
 
 from lib.sims.sim import Sim
 
@@ -61,6 +62,7 @@ class ArmAndBoxSimConfig:
     plane_params: gymapi.PlaneParams
     viewer_config: ViewerConfig
     box_config: BoxConfig
+    n_actors_per_env: int
 
 
 @dataclass
@@ -90,6 +92,9 @@ class ArmAndBoxSim(Sim):
     env_ptrs: List
     arm_handles: List
     box_handles: List
+    dof_positions: torch.Tensor
+    dof_velocities: torch.Tensor
+    box_positions: torch.Tensor
 
 
 def load_asset(
@@ -234,6 +239,19 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
 
     gym.prepare_sim(sim)
 
+    # get dof state buffer
+    _dof_states = gym.acquire_dof_state_tensor(sim)
+    dof_states = gymtorch.wrap_tensor(_dof_states)
+    dof_pos = dof_states[:, 0].view(config.n_envs, parts.arm.n_dofs)
+    dof_vel = dof_states[:, 1].view(config.n_envs, parts.arm.n_dofs)
+
+    # get position buffer for boxes
+    _root_states = gym.acquire_actor_root_state_tensor(sim)
+    root_states = gymtorch.wrap_tensor(_root_states).view(
+        config.n_envs, config.n_actors_per_env, 13
+    )
+    box_positions: torch.Tensor = root_states[:, 1, 0:3]
+
     arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(
         sim=sim,
         viewer=viewer,
@@ -241,6 +259,9 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         env_ptrs=env_ptrs,
         arm_handles=arm_handles,
         box_handles=box_handles,
+        dof_positions=dof_pos,
+        dof_velocities=dof_vel,
+        box_positions=box_positions,
     )
 
     return arm_and_box_sim

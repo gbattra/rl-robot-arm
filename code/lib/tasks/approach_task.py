@@ -73,8 +73,16 @@ def initialize_approach_task(
 def compute_approach_task_observations(
     task: ApproachTask, gym: gymapi.Gym
 ) -> torch.Tensor:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    return torch.zeros((len(task.sim.env_ptrs), task.observation_size)).to(device)
+    state: torch.Tensor = torch.cat(
+        (
+            task.sim.dof_positions,
+            task.sim.dof_velocities,
+            task.dof_targets,
+            task.sim.box_positions,
+        ),
+        axis=1,
+    )
+    return state
 
 
 def compute_approach_task_rewards(
