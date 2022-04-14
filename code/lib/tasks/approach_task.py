@@ -247,10 +247,6 @@ def approach_task_optimize_dqn(
     target_action_values = (
         target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
     )
-    print(rewards.shape)
-    print(target_action_values.shape)
-    print(dones.shape)
-    print("-------")
     q_targets = rewards + (gamma * target_action_values * ~dones)
     q_est = (
         policy_net(states)
