@@ -4,9 +4,11 @@
 Executable for running the approach task
 """
 
+from distutils.command.config import config
 from isaacgym import gymapi, gymutil
 
 from typing import Callable
+from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning
 from lib.rl.buffer import ReplayBuffer
 from lib.rl.dqn import dqn
 from lib.rl.nn import NeuralNetwork
@@ -41,16 +43,18 @@ GAMMA: float = 0.99
 LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
-EPS_END: float = 0.05
+EPS_END: float = 0.1
 EPS_DECAY: float = 0.999
 
 REPLAY_BUFFER_SIZE: int = 100000
-TARGET_UPDATE_FREQ: int = 1000
+TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 150
 
 N_EPOCHS: int = 100
-N_EPISODES: int = 1000
-N_STEPS: int = 10000
+N_EPISODES: int = 100
+N_STEPS: int = 450
+
+ANALYTICS_FREQ: int = 100
 
 
 def main():
@@ -86,7 +90,7 @@ def main():
         n_envs_per_row=10,
         n_actors_per_env=2,
         arm_config=ArmConfig(
-            hand_link="panda_link7",
+            hand_link="panda_leftfinger",
             asset_config=AssetConfig(
                 asset_root="assets",
                 asset_file="urdf/franka_description/robots/franka_panda.urdf",
@@ -115,7 +119,7 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, distance_threshold=0.25
+        action_scale=0.1, distance_threshold=0.25, max_episode_steps=N_STEPS
     )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
@@ -130,7 +134,7 @@ def main():
     loss_fn = nn.MSELoss()
 
     optimize: Callable[
-        [nn.Module, nn.Module, ReplayBuffer], None
+        [nn.Module, nn.Module, ReplayBuffer], float
     ] = lambda buff, t: approach_task_optimize_dqn(
         task=task,
         buffer=buff,
@@ -152,6 +156,8 @@ def main():
         task, policy_net, epsilon
     )
 
+    analytics: Analytics = initialize_analytics(N_EPOCHS, N_EPISODES, N_STEPS, ANALYTICS_FREQ, sim_config.n_envs)
+
     results = dqn(
         reset_task=lambda dones: reset_approach_task(task, gym, dones),
         get_observations=lambda: compute_approach_task_observations(task, gym),
@@ -159,7 +165,7 @@ def main():
         policy=policy,
         buffer=buffer,
         optimize=optimize,
-        analytics=lambda r, d, l, p, e, t: None,
+        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t),
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
         n_steps=N_STEPS,

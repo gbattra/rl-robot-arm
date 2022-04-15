@@ -10,7 +10,8 @@ from optparse import Option
 from typing import Any, List, Optional
 
 from attr import field
-from isaacgym import gymapi, gymtorch
+from isaacgym import gymapi, gymtorch, torch_utils
+
 import numpy as np
 import torch
 
@@ -76,6 +77,8 @@ class Arm:
     asset: gymapi.Asset
     dof_props: Any
     n_dofs: int
+    lower_limits: torch.Tensor
+    upper_limits: torch.Tensor
     name: str
 
 
@@ -184,6 +187,7 @@ def create_env(
 def build_parts(
     config: ArmAndBoxSimConfig, sim: gymapi.Sim, gym: gymapi.Gym
 ) -> ArmAndBoxSimParts:
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # load arm asset
     arm_asset = load_asset(config.arm_config.asset_config, sim, gym)
 
@@ -192,7 +196,10 @@ def build_parts(
     dof_props["damping"][:].fill(config.arm_config.damping)
 
     n_dofs = len(dof_props)
-    arm: Arm = Arm(arm_asset, dof_props, n_dofs, "arm")
+    arm_upper_limits = torch_utils.to_torch(dof_props["upper"], device=device)
+    arm_lower_limits = torch_utils.to_torch(dof_props["lower"], device=device)
+    arm: Arm = Arm(
+        arm_asset, dof_props, n_dofs, arm_lower_limits, arm_upper_limits, "arm")
 
     # load box asset
     box_asset = gym.create_box(
