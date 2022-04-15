@@ -39,6 +39,8 @@ def dqn(
 
                 for i in range(s.shape[0]):
                     buffer.add(Transition(s[i], a[i], s_prime[i], r[i], done[i]))
+                    if done[i]:
+                        buffer.add_done(Transition(s[i], a[i], s_prime[i], r[i], done[i]))
 
                 loss = optimize(buffer, t)
                 analytics(r, done, loss, p, e, t)

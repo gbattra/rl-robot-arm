@@ -242,17 +242,38 @@ def approach_task_optimize_dqn(
     n_joint_actions = len(ApproachTaskActions)
     n_joints = task.sim.parts.arm.n_dofs
 
-    if timestep < batch_size:
-        return
+    if buffer.sample_buffer_size >= batch_size:
+        sample = buffer.sample(batch_size)
+    else:
+        sample = buffer.sample(buffer.sample_buffer_size)
 
-    sample = buffer.sample(batch_size)
-    batch = Transition(*zip(*sample))
+    if buffer.dones_buffer_size >= batch_size:
+        dones_sample = buffer.sample_dones(batch_size)
+    elif buffer.dones_buffer_size == 0:
+        dones_sample = sample.copy()
+    else:
+        dones_sample = buffer.sample_dones(buffer.dones_buffer_size)
 
-    states = torch.stack(batch.state)
-    next_states = torch.stack(batch.next_state)
-    actions = torch.stack(batch.action)
-    rewards = torch.stack(batch.reward)
-    dones = torch.stack(batch.done)
+    sample_batch = Transition(*zip(*sample))
+    dones_batch = Transition(*zip(*dones_sample))
+
+    sample_states = torch.stack(sample_batch.state)
+    sample_next_states = torch.stack(sample_batch.next_state)
+    sample_actions = torch.stack(sample_batch.action)
+    sample_rewards = torch.stack(sample_batch.reward)
+    sample_dones = torch.stack(sample_batch.done)
+
+    done_states = torch.stack(dones_batch.state)
+    dones_next_states = torch.stack(dones_batch.next_state)
+    dones_actions = torch.stack(dones_batch.action)
+    dones_rewards = torch.stack(dones_batch.reward)
+    dones_dones = torch.stack(dones_batch.done)
+
+    states = torch.vstack([sample_states, done_states])
+    next_states = torch.vstack([sample_next_states, dones_next_states])
+    actions = torch.vstack([sample_actions, dones_actions])
+    rewards = torch.vstack([sample_rewards, dones_rewards])
+    dones = torch.vstack([sample_dones, dones_dones])
 
     target_action_values = (
         target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
