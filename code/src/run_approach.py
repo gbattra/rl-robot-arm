@@ -44,7 +44,7 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.1
-EPS_DECAY: float = 0.999
+EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 100000
 TARGET_UPDATE_FREQ: int = 100
@@ -105,7 +105,7 @@ def main():
             height=0.075,
             depth=0.075,
             friction=0.1,
-            start_pose=gymapi.Transform(p=gymapi.Vec3(0, 0.75, 0.75)),
+            start_pose=gymapi.Transform(p=gymapi.Vec3(0.75, 0.75, 0.75)),
             asset_options=box_asset_options,
         ),
         compute_device=args.compute_device_id,

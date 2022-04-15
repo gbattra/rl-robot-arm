@@ -102,6 +102,10 @@ class ArmAndBoxSim(Sim):
     dof_velocities: torch.Tensor
     box_poses: torch.Tensor
     hand_poses: torch.Tensor
+    rb_states: torch.Tensor
+    root_states: torch.Tensor
+    _root_states: torch.Tensor
+    init_root: torch.Tensor
 
 
 def load_asset(
@@ -256,6 +260,10 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     dof_pos = dof_states.view(config.n_envs, -1, 2)[..., 0]
     dof_vel = dof_states.view(config.n_envs, -1, 2)[..., 1]
 
+    # get root states
+    _root_states = gym.acquire_actor_root_state_tensor(sim)
+    root_states = gymtorch.wrap_tensor(_root_states).view(config.n_envs, -1, 13)
+
     # get hand poses
     _rb_states = gym.acquire_rigid_body_state_tensor(sim)
     rb_states = gymtorch.wrap_tensor(_rb_states).view(config.n_envs, -1, 13)
@@ -266,6 +274,9 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     hand_poses: torch.Tensor = rb_states[:, hand_idx]
 
     box_poses: torch.Tensor = rb_states[:, -1]
+
+    gym.refresh_actor_root_state_tensor(sim)
+    gym.refresh_dof_state_tensor(sim)
 
     arm_and_box_sim: ArmAndBoxSim = ArmAndBoxSim(
         sim=sim,
@@ -280,6 +291,10 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         dof_velocities=dof_vel,
         box_poses=box_poses,
         hand_poses=hand_poses,
+        rb_states=rb_states,
+        root_states=root_states,
+        _root_states=_root_states,
+        init_root=root_states.clone()
     )
 
     return arm_and_box_sim
@@ -293,9 +308,8 @@ def destroy_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
 def step_sim(sim: ArmAndBoxSim, gym: gymapi.Gym) -> None:
     # pre-physics
     gym.refresh_rigid_body_state_tensor(sim.sim)
+    gym.refresh_actor_root_state_tensor(sim.sim)
     gym.refresh_dof_state_tensor(sim.sim)
-    gym.refresh_jacobian_tensors(sim.sim)
-    gym.refresh_mass_matrix_tensors(sim.sim)
 
     # physics step
     gym.simulate(sim.sim)

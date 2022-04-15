@@ -149,9 +149,23 @@ def reset_approach_task(
     )
     task.dof_targets[reset_envs, :] = arm_confs[:]
 
-    task.env_steps[reset_envs] = 0
+    rands = torch.rand((task.sim.n_envs, 3)).to(device)
+    box_poses = torch.randint(-1, 1, (task.sim.n_envs, 3)).to(device) * rands
+    box_poses[..., 2] = .0
+
+    root_states = task.sim.init_root.clone().to(device)
+    root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
     
-    reset_envs = reset_envs.to(dtype=torch.int32).to(device)
+    task.env_steps[reset_envs] = 0
+
+    all_actor_indices = torch.arange(2 * task.sim.n_envs, dtype=torch.int32).to(device).view(task.sim.n_envs, 2)
+    actor_indices = all_actor_indices[reset_envs, 1]
+    
+    gym.set_actor_root_state_tensor_indexed(
+        task.sim.sim,
+        gymtorch.unwrap_tensor(root_states),
+        gymtorch.unwrap_tensor(actor_indices),
+        len(actor_indices))
     gym.set_dof_state_tensor(task.sim.sim, gymtorch.unwrap_tensor(task.sim.dof_states))
 
     return
