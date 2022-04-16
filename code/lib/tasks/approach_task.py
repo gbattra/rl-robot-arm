@@ -150,7 +150,8 @@ def reset_approach_task(
     task.dof_targets[reset_envs, :] = arm_confs[:]
 
     rands = torch.rand((task.sim.n_envs, 3)).to(device)
-    box_poses = torch.randint(-1, 1, (task.sim.n_envs, 3)).to(device) * rands
+    signs = (torch.randint(0, 2, (task.sim.n_envs, 3)).to(device) * 2.) - 1.
+    box_poses = (torch.ones((task.sim.n_envs, 3)).to(device) * 0.25 + (rands * 0.5)) * signs
     box_poses[..., 2] = .0
 
     root_states = task.sim.init_root.clone().to(device)
@@ -204,11 +205,11 @@ def step_approach_task(
 
 def approach_task_network(task: ApproachTask) -> nn.Sequential:
     return nn.Sequential(
-        nn.Linear(task.observation_size, 64),
+        nn.Linear(task.observation_size, 150),
         nn.ReLU(),
-        nn.Linear(64, 64),
+        nn.Linear(150, 150),
         nn.ReLU(),
-        nn.Linear(64, task.action_size),
+        nn.Linear(150, task.action_size),
     )
 
 

@@ -65,14 +65,14 @@ def plot_learning(
     plt.figure(1)
     plt.clf()
 
-    plt.plot(analytics.epoch_rewards[epoch, :episode].detach().cpu().numpy(), label='Epoch Reward')
-    plt.plot(analytics.epoch_episodes[epoch, :episode].detach().cpu().numpy(), label='Epoch Episode Count')
+    plt.plot(analytics.epoch_rewards[epoch, :episode].detach().cpu().numpy() / analytics.env_timesteps.shape[0], label='Epoch Reward')
+    plt.plot(analytics.epoch_episodes[epoch, :episode].detach().cpu().numpy() / analytics.env_timesteps.shape[0], label='Epoch Episode Count')
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
     # if len(d_t) >= 100:
     #         means = d_t.unfold(0, 100, 1).mean(1).view(-1)
     #         means = torch.cat((torch.zeros(99), means))
     #         plt.plot(means.numpy(), label=label)
-    plt.pause(0.01)
+    plt.pause(0.001)
     plt.legend()
     plt.show(block=False)
