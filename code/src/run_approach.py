@@ -44,15 +44,15 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.1
-EPS_DECAY: float = 0.9999
+EPS_DECAY: float = 0.97
 
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 64
 
-N_EPOCHS: int = 100
-N_EPISODES: int = 100
-N_STEPS: int = 450
+N_EPOCHS: int = 5
+N_EPISODES: int = 200
+N_STEPS: int = 100
 
 ANALYTICS_FREQ: int = 100
 
@@ -146,6 +146,7 @@ def main():
         gamma=GAMMA,
         batch_size=BATCH_SIZE,
         target_update_freq=TARGET_UPDATE_FREQ,
+        her=True
     )
 
     epsilon: Callable[[int], float] = lambda t: max(
