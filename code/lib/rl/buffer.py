@@ -7,76 +7,60 @@ Buffer functions. Some code inspired by https://pytorch.org/tutorials/intermedia
 
 from collections import deque, namedtuple
 import random
-from typing import List
+from typing import List, Tuple
 
-
-Transition = namedtuple(
-    "Transition", ("state", "action", "next_state", "reward", "done")
-)
+import torch
 
 
 class ReplayBuffer:
-    def __init__(self, size: int) -> None:
-        self.sample_buffer_size = 0
-        self.dones_buffer_size = 0
-        self.buffer = deque([], maxlen=size)
-        self.dones = deque([], maxlen=size)
+    def __init__(
+            self,
+            size: int,
+            state_size: int,
+            action_size: int,
+            n_envs: int) -> None:
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    def add(self, transition: Transition) -> None:
-        self.sample_buffer_size += 1
-        self.buffer.append(transition)
-
-    def add_done(self, transition: Transition, _: int) -> None:
-        self.dones_buffer_size += 1
-        self.dones.append(transition)
-
-    def sample(self, batch_size: int) -> List[Transition]:
-        return random.sample(self.buffer, batch_size)
-
-    def sample_dones(self, batch_size: int) -> List[Transition]:
-        return random.sample(self.dones, batch_size)
-
-    def __len__(self):
-        return len(self.buffer)
-
-
-class HerReplayBuffer(ReplayBuffer):
-    def __init__(self, size: int, n_envs: int) -> None:
-        super().__init__(size)
+        self.index = 0
+        self.buffers_filled = False
+        self.size = size
+        self.state_size = state_size
+        self.action_size = action_size
         self.n_envs = n_envs
-        self.trajectories: List[List[Transition]] = [[]] * n_envs
 
-    def add(self, transition: Transition, i: int) -> None:
-        super().add(transition)
-        self.trajectories[i].append(transition)
-        if transition.done:
-            self.trajectories[i] = []
+        self.states_buffer = torch.zeros((n_envs, size, state_size)).to(self.device)
+        self.actions_buffer = torch.zeros((n_envs, size, action_size)).long().to(self.device)
+        self.next_states_buffer = torch.zeros((n_envs, size, state_size)).to(self.device)
+        self.rewards_buffer = torch.zeros((n_envs, size, 1)).to(self.device)
+        self.dones_buffer = torch.zeros((n_envs, size, 1)).bool().to(self.device)
 
-    def flush_trajectory(self, i: int) -> None:
-        trajectory = self.trajectories[i]
-        if len(trajectory) == 0:
-            return
-        terminal_transition = trajectory[-1]
-        terminal_transition.done[:] = True
-        # use hand position as terminal goal
-        terminal_goal = terminal_transition.next_state[-6:-3]
-        for transition in trajectory:
-            state_her = transition.state.clone()
-            state_her[-3:] = terminal_goal[:]
-            
-            next_state_her = transition.next_state.clone()
-            next_state_her[-3:] = terminal_goal[:]
+    def add(self,
+            states: torch.Tensor,
+            actions: torch.Tensor,
+            next_states: torch.Tensor,
+            rwds: torch.Tensor,
+            dones: torch.Tensor) -> None:
+        self.states_buffer[:, self.index, :] = states[:]
+        self.actions_buffer[:, self.index, :] = actions[:]
+        self.next_states_buffer[:, self.index, :] = next_states[:]
+        self.rewards_buffer[:, self.index, :] = rwds[:]
+        self.dones_buffer[:, self.index, :] = dones[:]
+        
+        self.index += 1
+        if self.index >= self.size - 1:
+            self.index = 0
+            self.buffers_filled = True
 
-            her_transition = Transition(
-                state_her,
-                transition.action.clone(),
-                next_state_her,
-                transition.reward.clone(),
-                transition.done.clone()
-            )
-            self.buffer.append(her_transition)
-        self.trajectories[i] = []
+    def sample(self, batch_size: int) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        max_step_idx = self.size if self.buffers_filled else self.index
+        env_idxs = torch.randint(0, self.n_envs, (batch_size, 1))
+        step_idxs = torch.randint(0, max_step_idx, (batch_size, 1))
 
-    def flush_trajectories(self) -> None:
-        for i in range(self.n_envs):
-            self.flush_trajectory(i)
+        sample_states = self.states_buffer[env_idxs, step_idxs, :].squeeze(-2)
+        sample_actions = self.actions_buffer[env_idxs, step_idxs, :].squeeze(-2)
+        sample_next_states = self.next_states_buffer[env_idxs, step_idxs, :].squeeze(-2)
+        sample_rwds = self.rewards_buffer[env_idxs, step_idxs, :].squeeze(-2)
+        sample_dones = self.dones_buffer[env_idxs, step_idxs, :].squeeze(-2)
+
+        return sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones

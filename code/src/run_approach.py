@@ -24,7 +24,7 @@ from lib.sims.arm_and_box_sim import (
 import torch
 
 from torch import Tensor, nn
-from lib.tasks.agent import ApproachBoxAgent
+from lib.tasks.agent import DQNAgent
 from lib.tasks.env import ApproachBoxEnv
 from lib.tasks.task import (
     ApproachTask,
@@ -41,7 +41,7 @@ EPS_START: float = 1.0
 EPS_END: float = 0.1
 EPS_DECAY: float = 0.9995
 
-REPLAY_BUFFER_SIZE: int = 1000000
+REPLAY_BUFFER_SIZE: int = 10000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 64
 
@@ -125,7 +125,7 @@ def main():
 
     policy_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
     target_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
-    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, task.observation_size, sim.parts.arm.n_dofs, sim_config.n_envs)
     # buffer: ReplayBuffer = HerReplayBuffer(REPLAY_BUFFER_SIZE, sim_config.n_envs)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
@@ -140,7 +140,7 @@ def main():
         gym=gym
     )
 
-    agent: ApproachBoxAgent = ApproachBoxAgent(
+    agent: DQNAgent = DQNAgent(
         n_dofs=task.sim.parts.arm.n_dofs,
         n_dof_actions=len(ApproachTaskActions),
         buffer=buffer,
@@ -156,17 +156,13 @@ def main():
 
     analytics: Analytics = initialize_analytics(N_EPOCHS, N_EPISODES, N_STEPS, ANALYTICS_FREQ, sim_config.n_envs)
 
-    # results = dqn(
-    #     env=env,
-    #     agent=agent,
-    #     analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t),
-    #     n_epochs=N_EPOCHS,
-    #     n_episodes=N_EPISODES,
-    #     n_steps=N_STEPS
-    # )
-
     try:
-        agent.train(env, N_EPOCHS, N_EPISODES, N_STEPS)
+        agent.train(
+            env,
+            N_EPOCHS,
+            N_EPISODES,
+            N_STEPS,
+            lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t))
     except KeyboardInterrupt:
         print("Exitting..")
 
