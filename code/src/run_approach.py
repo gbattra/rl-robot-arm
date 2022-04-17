@@ -4,12 +4,11 @@
 Executable for running the approach task
 """
 
-from distutils.command.config import config
 from isaacgym import gymapi, gymutil
 
 from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning
-from lib.rl.buffer import HerReplayBuffer, ReplayBuffer
+from lib.rl.buffer import ReplayBuffer
 from lib.rl.dqn import dqn
 from lib.rl.nn import NeuralNetwork
 from lib.sims.arm_and_box_sim import (
@@ -32,13 +31,8 @@ from lib.tasks.task import (
     ApproachTask,
     ApproachTaskActions,
     ApproachTaskConfig,
-    approach_task_dqn_policy,
-    approach_task_optimize_dqn,
     approach_task_network,
-    compute_approach_task_observations,
     initialize_approach_task,
-    reset_approach_task,
-    step_approach_task,
 )
 
 GAMMA: float = 0.99
@@ -68,6 +62,8 @@ def main():
     sim_params.use_gpu_pipeline = True
     sim_params.up_axis = gymapi.UP_AXIS_Z
     sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
+    # sim_params.dt = .0001
+    sim_params.substeps = 2
 
     # arm asset configs
     arm_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
@@ -136,28 +132,8 @@ def main():
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
 
-    optimize: Callable[
-        [nn.Module, nn.Module, ReplayBuffer], float
-    ] = lambda buff, t: approach_task_optimize_dqn(
-        task=task,
-        buffer=buff,
-        timestep=t,
-        policy_net=policy_net,
-        target_net=target_net,
-        loss_fn=loss_fn,
-        optimizer=optimizer,
-        gamma=GAMMA,
-        batch_size=BATCH_SIZE,
-        target_update_freq=TARGET_UPDATE_FREQ,
-        her=True
-    )
-
     epsilon: Callable[[int], float] = lambda t: max(
         EPS_END, EPS_START * (EPS_DECAY**t)
-    )
-
-    policy: Callable[[Tensor, int], Tensor] = approach_task_dqn_policy(
-        task, policy_net, epsilon
     )
 
     env: ApproachBoxEnv = ApproachBoxEnv(

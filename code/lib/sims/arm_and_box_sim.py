@@ -6,10 +6,8 @@ Env with a robot arm and a box
 """
 
 from dataclasses import dataclass
-from optparse import Option
 from typing import Any, List, Optional
 
-from attr import field
 from isaacgym import gymapi, gymtorch, torch_utils
 
 import numpy as np

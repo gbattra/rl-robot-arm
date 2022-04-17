@@ -6,17 +6,12 @@ Task for training arm to approach target position
 """
 
 from enum import IntEnum
-from typing import Callable, Dict, Optional, Tuple
-from isaacgym import gymapi, gymtorch, torch_utils
+from isaacgym import gymapi
 from dataclasses import dataclass
-from lib.rl.buffer import ReplayBuffer, Transition
 
-from lib.sims.arm_and_box_sim import ArmAndBoxSim, step_sim
-from lib.sims.sim import Sim
-import numpy as np
+from lib.sims.arm_and_box_sim import ArmAndBoxSim
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 class ApproachTaskActions(IntEnum):
@@ -80,4 +75,14 @@ def initialize_approach_task(
             device=device,
         ),
         distance_threshold=config.distance_threshold,
+    )
+
+def approach_task_network(task: ApproachTask) -> nn.Sequential:
+    dim_size = 64
+    return nn.Sequential(
+        nn.Linear(task.observation_size, dim_size),
+        nn.ReLU(),
+        nn.Linear(dim_size, dim_size),
+        nn.ReLU(),
+        nn.Linear(dim_size, task.action_size),
     )
