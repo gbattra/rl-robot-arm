@@ -36,11 +36,11 @@ class ReplayBuffer:
         self.rewards_buffer = torch.zeros((n_envs, size, 1)).to(self.device)
         self.dones_buffer = torch.zeros((n_envs, size, 1)).bool().to(self.device)
 
-        self.winning_states_buffer = torch.zeros((size//2, state_size)).to(self.device)
-        self.winning_actions_buffer = torch.zeros((size//2, action_size)).long().to(self.device)
-        self.winning_next_states_buffer = torch.zeros((size//2, state_size)).to(self.device)
-        self.winning_rewards_buffer = torch.zeros((size//2, 1)).to(self.device)
-        self.winning_dones_buffer = torch.zeros((size//2, 1)).bool().to(self.device)
+        self.winning_states_buffer = torch.zeros((size, state_size)).to(self.device)
+        self.winning_actions_buffer = torch.zeros((size, action_size)).long().to(self.device)
+        self.winning_next_states_buffer = torch.zeros((size, state_size)).to(self.device)
+        self.winning_rewards_buffer = torch.zeros((size, 1)).to(self.device)
+        self.winning_dones_buffer = torch.zeros((size, 1)).bool().to(self.device)
 
     def add(self,
             states: torch.Tensor,
@@ -72,16 +72,16 @@ class ReplayBuffer:
         sample_size = states[_winning].shape[0]
         if sample_size == 0:
             return
-        if self.winning_index + sample_size >= self.size // 2:
+        if self.winning_index + sample_size >= self.size:
             sample_size = self.size - self.winning_index
-        self.winning_states_buffer[self.winning_index:self.winning_index + sample_size, :] = states[_winning][:sample_size+1]
-        self.winning_actions_buffer[self.winning_index:self.winning_index + sample_size, :] = actions[_winning][:sample_size+1]
-        self.winning_next_states_buffer[self.winning_index:self.winning_index + sample_size, :] = next_states[_winning][:sample_size+1]
-        self.winning_rewards_buffer[self.winning_index:self.winning_index + sample_size, :] = rwds[_winning][:sample_size+1]
-        self.winning_dones_buffer[self.winning_index:self.winning_index + sample_size, :] = dones[_winning][:sample_size+1]
+        self.winning_states_buffer[self.winning_index:self.winning_index + sample_size, :] = states[_winning][:sample_size, :]
+        self.winning_actions_buffer[self.winning_index:self.winning_index + sample_size, :] = actions[_winning][:sample_size, :]
+        self.winning_next_states_buffer[self.winning_index:self.winning_index + sample_size, :] = next_states[_winning][:sample_size, :]
+        self.winning_rewards_buffer[self.winning_index:self.winning_index + sample_size, :] = rwds[_winning][:sample_size, :]
+        self.winning_dones_buffer[self.winning_index:self.winning_index + sample_size, :] = dones[_winning][:sample_size, :]
 
         self.winning_index += sample_size
-        if self.winning_index >= (self.size // 2) - 1:
+        if self.winning_index >= self.size - 1:
             self.winning_index = 0
             self.winning_buffers_filled = True
 

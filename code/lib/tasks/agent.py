@@ -119,8 +119,8 @@ class DQNAgent(Agent):
             n_episodes: int,
             n_steps: int,
             analytics: Callable) -> Dict:
+        global_timestep = 0
         for p in trange(n_epochs, desc="Epoch", leave=False):
-            global_timestep = 0
             for e in trange(n_episodes, desc="Episode", leave=False):
                 env.reset(None)
                 for t in trange(n_steps, desc="Step", leave=False):

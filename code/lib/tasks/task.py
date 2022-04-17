@@ -79,13 +79,3 @@ def initialize_approach_task(
         ),
         distance_threshold=config.distance_threshold,
     )
-
-def approach_task_network(task: ApproachTask) -> nn.Sequential:
-    dim_size = 64
-    return nn.Sequential(
-        nn.Linear(task.observation_size, dim_size),
-        nn.ReLU(),
-        nn.Linear(dim_size, dim_size),
-        nn.ReLU(),
-        nn.Linear(dim_size, task.action_size),
-    )

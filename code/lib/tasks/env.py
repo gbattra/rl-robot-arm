@@ -8,6 +8,7 @@ Protocol for running tasks
 
 from abc import abstractmethod
 from dataclasses import dataclass
+import math
 from typing import Dict, Optional, Tuple
 from isaacgym import gymapi, gymtorch, torch_utils
 
@@ -65,6 +66,8 @@ class ApproachBoxEnv(Env):
         self.dof_velocities = sim.dof_velocities
         self.box_poses = sim.box_poses
         self.hand_poses = sim.hand_poses
+        self.left_finger_poses = sim.left_finger_poses
+        self.right_finger_poses = sim.right_finger_poses
         self.rb_states = sim.rb_states
         self.root_states = sim.root_states
         self.init_root = sim.init_root
@@ -103,16 +106,16 @@ class ApproachBoxEnv(Env):
         target_pos = self.box_poses[:, 0:3]
         target_pos[:, 2] += self.gripper_offset_z
         distances: torch.Tensor = torch.norm(
-            self.hand_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
+            self.left_finger_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
         ).to(self.device)
         winning: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
         rwds: torch.Tensor = torch.ones_like(winning).float().to(self.device)
-        rwds[~winning] = 0
+        rwds[~winning] = .0
         return rwds.unsqueeze(-1)
 
     def compute_dones(self) -> torch.Tensor:
         distances: torch.Tensor = torch.norm(
-            self.hand_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
+            self.left_finger_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
         ).to(self.device)
         dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
         return dones.unsqueeze(-1)
@@ -130,17 +133,16 @@ class ApproachBoxEnv(Env):
             return
 
         # set default DOF states
-        arm_confs: torch.Tensor = torch.rand(
-            (len(reset_envs), self.arm_n_dofs), device=self.device
-        )
+        conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs)).to(self.device) * 2.) - 1.
+        arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
         arm_confs = torch_utils.tensor_clamp(
-            arm_confs,
+            arm_confs* (2 * math.pi) * conf_signs,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
-        self.dof_positions[reset_envs, :] = arm_confs[:, :]
+        self.dof_positions[reset_envs, :] = arm_confs[reset_envs, :]
         self.dof_velocities[reset_envs, :] = .0
-        self.dof_targets[reset_envs, :] = arm_confs[:]
+        self.dof_targets[reset_envs, :] = arm_confs[reset_envs, :]
 
         rands = torch.rand((self.n_envs, 3)).to(self.device)
         signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.

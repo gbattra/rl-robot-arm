@@ -68,8 +68,8 @@ def plot_learning(
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
     for e in range(epoch+1):
-        # plt.plot(epoch_rewards[e, :episode] / analytics.env_timesteps.shape[0], label=f'Epoch {e} Reward')
-        plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
+        plt.plot(epoch_rewards[e, :episode] / analytics.env_timesteps.shape[0], label=f'Epoch {e} Reward')
+        # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
     # if len(d_t) >= 100:

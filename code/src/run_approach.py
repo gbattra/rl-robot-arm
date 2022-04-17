@@ -9,7 +9,7 @@ from isaacgym import gymapi, gymutil
 from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning
 from lib.rl.buffer import ReplayBuffer
-from lib.rl.nn import NeuralNetwork
+from lib.rl.nn import DQN
 from lib.sims.arm_and_box_sim import (
     ArmAndBoxSim,
     ArmAndBoxSimConfig,
@@ -30,7 +30,6 @@ from lib.tasks.task import (
     ApproachTask,
     ApproachTaskActions,
     ApproachTaskConfig,
-    approach_task_network,
     initialize_approach_task,
 )
 
@@ -39,15 +38,15 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.1
-EPS_DECAY: float = 0.9995
+EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 10000
 TARGET_UPDATE_FREQ: int = 100
-BATCH_SIZE: int = 64
+BATCH_SIZE: int = 150
 
 N_EPOCHS: int = 5
 N_EPISODES: int = 100
-N_STEPS: int = 100
+N_STEPS: int = 200
 
 ANALYTICS_FREQ: int = 100
 
@@ -85,7 +84,9 @@ def main():
         n_envs_per_row=10,
         n_actors_per_env=2,
         arm_config=ArmConfig(
-            hand_link="panda_leftfinger",
+            hand_link="panda_hand",
+            left_finger_link="panda_leftfinger",
+            right_finger_link="panda_rightfinger",
             asset_config=AssetConfig(
                 asset_root="assets",
                 asset_file="urdf/franka_description/robots/franka_panda.urdf",
@@ -114,15 +115,15 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.2, max_episode_steps=N_STEPS
+        action_scale=0.125, gripper_offset_z=0.1, distance_threshold=0.2, max_episode_steps=N_STEPS
     )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
     sim: ArmAndBoxSim = initialize_sim(sim_config, gym)
     task: ApproachTask = initialize_approach_task(task_config, sim, gym)
 
-    policy_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
-    target_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
+    policy_net: nn.Module = DQN(task.observation_size, task.action_size, 150).to(device)
+    target_net: nn.Module = DQN(task.observation_size, task.action_size, 150).to(device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, task.observation_size, sim.parts.arm.n_dofs, sim_config.n_envs)
     # buffer: ReplayBuffer = HerReplayBuffer(REPLAY_BUFFER_SIZE, sim_config.n_envs)
 

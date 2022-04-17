@@ -26,6 +26,8 @@ class AssetConfig:
 @dataclass
 class ArmConfig:
     hand_link: str
+    left_finger_link: str
+    right_finger_link: str
     asset_config: AssetConfig
     stiffness: float
     damping: float
@@ -100,6 +102,8 @@ class ArmAndBoxSim(Sim):
     dof_velocities: torch.Tensor
     box_poses: torch.Tensor
     hand_poses: torch.Tensor
+    left_finger_poses: torch.Tensor
+    right_finger_poses: torch.Tensor
     rb_states: torch.Tensor
     root_states: torch.Tensor
     _root_states: torch.Tensor
@@ -271,6 +275,17 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
     )
     hand_poses: torch.Tensor = rb_states[:, hand_idx]
 
+    left_finger_idx: int = gym.find_actor_rigid_body_handle(
+        env_ptrs[0], arm_handles[0], config.arm_config.left_finger_link
+    )
+    left_finger_poses: torch.Tensor = rb_states[:, left_finger_idx]
+
+
+    right_finger_idx: int = gym.find_actor_rigid_body_handle(
+        env_ptrs[0], arm_handles[0], config.arm_config.right_finger_link
+    )
+    right_finger_poses: torch.Tensor = rb_states[:, right_finger_idx]
+
     box_poses: torch.Tensor = rb_states[:, -1]
 
     gym.refresh_actor_root_state_tensor(sim)
@@ -289,6 +304,8 @@ def initialize_sim(config: ArmAndBoxSimConfig, gym: gymapi.Gym) -> ArmAndBoxSim:
         dof_velocities=dof_vel,
         box_poses=box_poses,
         hand_poses=hand_poses,
+        left_finger_poses=left_finger_poses,
+        right_finger_poses=right_finger_poses,
         rb_states=rb_states,
         root_states=root_states,
         _root_states=_root_states,
