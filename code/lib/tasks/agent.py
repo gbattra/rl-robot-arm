@@ -22,14 +22,20 @@ class Agent:
         pass
 
     @abstractmethod
-    def remember(self, transition: Transition) -> None:
+    def remember(
+            self,
+            states: torch.Tensor,
+            actions: torch.Tensor,
+            s_primes: torch.Tensor,
+            rwds: torch.Tensor,
+            dones: torch.Tensor) -> None:
         '''
         Store a transition in the replay buffer
         '''
         pass
 
     @abstractmethod
-    def optimize(self) -> torch.Tensor:
+    def optimize(self, timestep: int) -> torch.Tensor:
         '''
         Update the DQN based on experience
         '''
@@ -44,7 +50,7 @@ class ApproachBoxAgent(Agent):
             buffer: ReplayBuffer,
             policy_net: nn.Module,
             target_net: nn.Module,
-            loss_fun: Callable,
+            loss_fn: Callable,
             optimizer: torch.optim.Optimizer,
             epsilon: Callable,
             gamma: float,
@@ -55,20 +61,30 @@ class ApproachBoxAgent(Agent):
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+        self.her = her
         self.n_dofs = n_dofs
         self.n_dof_actions = n_dof_actions
         self.buffer = buffer
         self.policy_net = policy_net
         self.target_net = target_net
-        self.loss_fn = loss_fun
+        self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.epsilon = epsilon
         self.gamma = gamma
         self.batch_size = batch_size
-        self.target_updat_freq = target_update_freq
+        self.target_update_freq = target_update_freq
 
-    def remember(self, transition: Transition) -> None:
-        self.buffer.add(transition)
+    def remember(
+            self,
+            states: torch.Tensor,
+            actions: torch.Tensor,
+            s_primes: torch.Tensor,
+            rwds: torch.Tensor,
+            dones: torch.Tensor) -> None:
+        for i in range(states.shape[0]):
+            self.buffer.add(Transition(states[i], actions[i], s_primes[i], rwds[i], dones[i]))
+            if dones[i]:
+                self.buffer.add_done(Transition(states[i], actions[i], s_primes[i], rwds[i], dones[i]), i)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
@@ -88,7 +104,7 @@ class ApproachBoxAgent(Agent):
             policy_actions[randoms] = random_actions[randoms]
         return policy_actions
 
-    def optimize(self) -> torch.Tensor:
+    def optimize(self, timestep: int) -> torch.Tensor:
         n_joint_actions = self.n_dof_actions
         n_joints = self.n_dofs
 
@@ -168,7 +184,7 @@ class ApproachBoxAgent(Agent):
         loss.backward()
         self.optimizer.step()
 
-        if self.timestep % self.target_update_freq == 0:
+        if timestep % self.target_update_freq == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
 
         return loss

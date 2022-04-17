@@ -13,7 +13,6 @@ import torch
 import numpy as np
 
 from torch import nn, Tensor
-from lib.rl.buffer import ReplayBuffer, Transition
 from lib.tasks.agent import Agent
 from lib.tasks.env import Env
 
@@ -21,8 +20,6 @@ from lib.tasks.env import Env
 def dqn(
     env: Env,
     agent: Agent,
-    buffer: ReplayBuffer,
-    optimize: Callable[[ReplayBuffer, int], float],
     analytics: Callable[[Tensor, Tensor, float, int, int], None],
     n_epochs: int,
     n_episodes: int,
@@ -37,12 +34,9 @@ def dqn(
                 a = agent.act(s, global_timestep)
                 s_prime, r, done, _ = env.step(a)
 
-                for i in range(s.shape[0]):
-                    buffer.add(Transition(s[i], a[i], s_prime[i], r[i], done[i]), i)
-                    if done[i]:
-                        buffer.add_done(Transition(s[i], a[i], s_prime[i], r[i], done[i]), i)
+                agent.remember(s, a, s_prime, r, done)
 
-                loss = optimize(buffer, t)
+                loss = agent.optimize(t)
                 analytics(r, done, loss, p, e, t)
 
                 # reset envs which have finished task

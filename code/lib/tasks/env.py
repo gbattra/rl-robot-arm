@@ -91,8 +91,8 @@ class ApproachBoxEnv(Env):
                 self.dof_positions,
                 # self.dof_velocities,
                 self.dof_targets,
-                self.sim.hand_poses[:, 0:3],
-                self.sim.box_poses[:, 0:3],
+                self.hand_poses[:, 0:3],
+                self.box_poses[:, 0:3],
             ),
             axis=1,
         )
@@ -117,7 +117,7 @@ class ApproachBoxEnv(Env):
 
         reset_envs = torch.arange(self.n_envs).to(self.device)
         if dones is not None:
-            timeout_envs = self.env_steps > self.max_episode_steps
+            timeout_envs = self.env_current_steps > self.max_episode_steps
             reset_envs = reset_envs[dones.squeeze(-1) + timeout_envs]
 
         if reset_envs.shape[0] == 0:
@@ -125,7 +125,7 @@ class ApproachBoxEnv(Env):
 
         # set default DOF states
         arm_confs: torch.Tensor = torch.rand(
-            (len(reset_envs), self.n_dofs), device=self.device
+            (len(reset_envs), self.arm_n_dofs), device=self.device
         )
         arm_confs = torch_utils.tensor_clamp(
             arm_confs,
@@ -144,9 +144,9 @@ class ApproachBoxEnv(Env):
         root_states = self.init_root.clone().to(self.device)
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
         
-        self.env_steps[reset_envs] = 0
+        self.env_current_steps[reset_envs] = 0
 
-        all_actor_indices = torch.arange(2 * self.sim.n_envs, dtype=torch.int32) \
+        all_actor_indices = torch.arange(2 * self.n_envs, dtype=torch.int32) \
             .to(self.device).view(self.n_envs, 2)
         actor_indices = all_actor_indices[reset_envs, 1]
         
@@ -164,7 +164,7 @@ class ApproachBoxEnv(Env):
         """
         Step the sim by taking the chosen actions
         """
-        self.env_steps[:] += 1
+        self.env_current_steps[:] += 1
         actions = (actions.float() - 1.0) * self.action_scale
         targets = self.dof_targets + actions
         targets = torch_utils.tensor_clamp(

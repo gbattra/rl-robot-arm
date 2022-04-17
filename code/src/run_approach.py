@@ -160,7 +160,7 @@ def main():
         task, policy_net, epsilon
     )
 
-    approach_box_env: ApproachBoxEnv = ApproachBoxEnv(
+    env: ApproachBoxEnv = ApproachBoxEnv(
         task=task,
         gym=gym
     )
@@ -182,17 +182,12 @@ def main():
     analytics: Analytics = initialize_analytics(N_EPOCHS, N_EPISODES, N_STEPS, ANALYTICS_FREQ, sim_config.n_envs)
 
     results = dqn(
-        reset_task=lambda dones: reset_approach_task(task, gym, dones),
-        get_observations=lambda: compute_approach_task_observations(task, gym),
-        step_task=lambda actions: step_approach_task(task, actions, gym),
-        policy=policy,
-        buffer=buffer,
-        optimize=optimize,
+        env=env,
+        agent=agent,
         analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t),
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
-        n_steps=N_STEPS,
-        her=True
+        n_steps=N_STEPS
     )
 
     try:
