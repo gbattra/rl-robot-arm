@@ -6,15 +6,13 @@
 Protocol for running tasks
 """
 
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 from isaacgym import gymapi, gymtorch, torch_utils
 
 import torch
-from lib.sims.arm_and_box_sim import ArmAndBoxSim
-
-from lib.sims.sim import Sim
-from lib.tasks.approach_task import ApproachTask
+from lib.tasks.task import ApproachTask
 
 
 @dataclass
@@ -23,16 +21,37 @@ class Task:
 
 
 class Env:
-    pass
+    @abstractmethod
+    def compute_observations(self) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def compute_rewards(self) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def compute_dones(self) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def reset(self, dones: Optional[torch.Tensor]) -> None:
+        pass
+
+    @abstractmethod
+    def step(self, actions: torch.Tensor) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
+        pass
 
 
-class ApproachBox(Env):
+class ApproachBoxEnv(Env):
     def __init__(
             self,
             task: ApproachTask,
             gym: gymapi.Gym) -> None:
         super().__init__()
         self.gym = gym
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         sim = task.sim
         self.sim = sim.sim
@@ -80,26 +99,23 @@ class ApproachBox(Env):
         return state
 
     def compute_rewards(self) -> torch.Tensor:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         distances: torch.Tensor = torch.norm(
             self.hand_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
-        ).to(device)
-        dones: torch.Tensor = distances.le(self.distance_threshold).to(device)
-        rwds: torch.Tensor = torch.ones(dones.shape).to(device) * dones
+        ).to(self.device)
+        dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
+        rwds: torch.Tensor = torch.ones(dones.shape).to(self.device) * dones
         return rwds.unsqueeze(-1)
 
     def compute_dones(self) -> torch.Tensor:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         distances: torch.Tensor = torch.norm(
             self.hand_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
-        ).to(device)
-        dones: torch.Tensor = distances.le(self.distance_threshold).to(device)
+        ).to(self.device)
+        dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
         return dones.unsqueeze(-1)
 
     def reset(self, dones: Optional[torch.Tensor]) -> None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        reset_envs = torch.arange(self.n_envs).to(device)
+        reset_envs = torch.arange(self.n_envs).to(self.device)
         if dones is not None:
             timeout_envs = self.env_steps > self.max_episode_steps
             reset_envs = reset_envs[dones.squeeze(-1) + timeout_envs]
@@ -109,7 +125,7 @@ class ApproachBox(Env):
 
         # set default DOF states
         arm_confs: torch.Tensor = torch.rand(
-            (len(reset_envs), self.n_dofs), device=device
+            (len(reset_envs), self.n_dofs), device=self.device
         )
         arm_confs = torch_utils.tensor_clamp(
             arm_confs,
@@ -120,18 +136,18 @@ class ApproachBox(Env):
         self.dof_velocities[reset_envs, :] = .0
         self.dof_targets[reset_envs, :] = arm_confs[:]
 
-        rands = torch.rand((self.n_envs, 3)).to(device)
-        signs = (torch.randint(0, 2, (self.n_envs, 3)).to(device) * 2.) - 1.
-        box_poses = (torch.ones((self.n_envs, 3)).to(device) * 0.25 + (rands * 0.5)) * signs
+        rands = torch.rand((self.n_envs, 3)).to(self.device)
+        signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.
+        box_poses = (torch.ones((self.n_envs, 3)).to(self.device) * 0.25 + (rands * 0.5)) * signs
         box_poses[..., 2] = .0
 
-        root_states = self.init_root.clone().to(device)
+        root_states = self.init_root.clone().to(self.device)
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
         
         self.env_steps[reset_envs] = 0
 
         all_actor_indices = torch.arange(2 * self.sim.n_envs, dtype=torch.int32) \
-            .to(device).view(self.n_envs, 2)
+            .to(self.device).view(self.n_envs, 2)
         actor_indices = all_actor_indices[reset_envs, 1]
         
         self.gym.set_actor_root_state_tensor_indexed(
@@ -148,7 +164,6 @@ class ApproachBox(Env):
         """
         Step the sim by taking the chosen actions
         """
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.env_steps[:] += 1
         actions = (actions.float() - 1.0) * self.action_scale
         targets = self.dof_targets + actions

@@ -26,7 +26,9 @@ from lib.sims.arm_and_box_sim import (
 import torch
 
 from torch import Tensor, nn
-from lib.tasks.approach_task import (
+from lib.tasks.agent import ApproachBoxAgent
+from lib.tasks.env import ApproachBoxEnv
+from lib.tasks.task import (
     ApproachTask,
     ApproachTaskActions,
     ApproachTaskConfig,
@@ -156,6 +158,25 @@ def main():
 
     policy: Callable[[Tensor, int], Tensor] = approach_task_dqn_policy(
         task, policy_net, epsilon
+    )
+
+    approach_box_env: ApproachBoxEnv = ApproachBoxEnv(
+        task=task,
+        gym=gym
+    )
+
+    agent: ApproachBoxAgent = ApproachBoxAgent(
+        n_dofs=task.sim.parts.arm.n_dofs,
+        n_dof_actions=len(ApproachTaskActions),
+        buffer=buffer,
+        policy_net=policy_net,
+        target_net=target_net,
+        loss_fn=loss_fn,
+        optimizer=optimizer,
+        epsilon=epsilon,
+        gamma=GAMMA,
+        batch_size=BATCH_SIZE,
+        target_update_freq=TARGET_UPDATE_FREQ
     )
 
     analytics: Analytics = initialize_analytics(N_EPOCHS, N_EPISODES, N_STEPS, ANALYTICS_FREQ, sim_config.n_envs)
