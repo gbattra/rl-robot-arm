@@ -68,6 +68,7 @@ class ApproachBoxEnv(Env):
         self.rb_states = sim.rb_states
         self.root_states = sim.root_states
         self.init_root = sim.init_root
+        self.gripper_offset_z = task.gripper_offest_z
 
         # arm info
         self.arm_n_dofs = sim.parts.arm.n_dofs
@@ -99,11 +100,14 @@ class ApproachBoxEnv(Env):
         return state
 
     def compute_rewards(self) -> torch.Tensor:
+        target_pos = self.box_poses[:, 0:3]
+        target_pos[:, 2] += self.gripper_offset_z
         distances: torch.Tensor = torch.norm(
             self.hand_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
         ).to(self.device)
-        dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
-        rwds: torch.Tensor = torch.ones(dones.shape).to(self.device) * dones
+        winning: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
+        rwds: torch.Tensor = torch.ones_like(winning).float().to(self.device)
+        rwds[~winning] = 0
         return rwds.unsqueeze(-1)
 
     def compute_dones(self) -> torch.Tensor:
@@ -112,9 +116,11 @@ class ApproachBoxEnv(Env):
         ).to(self.device)
         dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
         return dones.unsqueeze(-1)
+        # if self.env_current_steps[0] >= self.max_episode_steps:
+        #     return torch.ones((self.n_envs, 1)).bool().to(self.device)
+        # return torch.zeros((self.n_envs, 1)).bool().to(self.device)
 
     def reset(self, dones: Optional[torch.Tensor]) -> None:
-
         reset_envs = torch.arange(self.n_envs).to(self.device)
         if dones is not None:
             timeout_envs = self.env_current_steps > self.max_episode_steps
@@ -139,6 +145,9 @@ class ApproachBoxEnv(Env):
         rands = torch.rand((self.n_envs, 3)).to(self.device)
         signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.
         box_poses = (torch.ones((self.n_envs, 3)).to(self.device) * 0.25 + (rands * 0.5)) * signs
+        
+        box_poses[..., 0] = .5
+        box_poses[..., 1] = .5
         box_poses[..., 2] = .0
 
         root_states = self.init_root.clone().to(self.device)

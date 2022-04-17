@@ -92,8 +92,7 @@ class DQNAgent(Agent):
             next_states: torch.Tensor,
             rwds: torch.Tensor,
             dones: torch.Tensor) -> None:
-        for i in range(states.shape[0]):
-            self.buffer.add(states[i], actions[i], next_states[i], rwds[i], dones[i])
+        self.buffer.add(states, actions, next_states, rwds, dones)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
@@ -143,57 +142,47 @@ class DQNAgent(Agent):
         n_joint_actions = self.n_dof_actions
         n_joints = self.n_dofs
 
-        sample = self.buffer.sample(self.batch_size) \
-            if self.buffer.index >= self.batch_size or self.buffer.buffers_filled \
-            else self.buffer.sample(self.buffer.index)
+        batch_size = self.batch_size \
+            if self.buffer.sample_index >= self.batch_size or self.buffer.sample_buffers_filled \
+            else self.buffer.sample_index
+        samples = self.buffer.sample(batch_size)
 
-        states, actions, next_states, rewards, dones = sample
+        states, actions, next_states, rewards, dones = samples
 
         # if not self.her:
-        #     if self.buffer.dones_buffer_size >= self.batch_size:
-        #         dones_sample = self.buffer.sample_dones(self.batch_size)
-        #     elif self.buffer.dones_buffer_size == 0:
-        #         dones_sample = sample.copy()
-        #     else:
-        #         dones_sample = self.buffer.sample_dones(self.buffer.dones_buffer_size)
+        if self.buffer.winning_index > batch_size or self.buffer.winning_buffers_filled:
+            winning_samples = self.buffer.sample(batch_size, winning=True)
+            winning_states, winning_actions, winning_next_states, winning_rewards, winning_dones = winning_samples
 
-        #     dones_batch = Transition(*zip(*dones_sample))
-
-        #     done_states = torch.stack(dones_batch.state)
-        #     dones_next_states = torch.stack(dones_batch.next_state)
-        #     dones_actions = torch.stack(dones_batch.action)
-        #     dones_rewards = torch.stack(dones_batch.reward)
-        #     dones_dones = torch.stack(dones_batch.done)
-
-        #     states = torch.vstack([states, done_states])
-        #     next_states = torch.vstack([next_states, dones_next_states])
-        #     actions = torch.vstack([actions, dones_actions])
-        #     rewards = torch.vstack([rewards, dones_rewards])
-        #     dones = torch.vstack([dones, dones_dones])
+            states = torch.vstack([states, winning_states])
+            next_states = torch.vstack([next_states, winning_next_states])
+            actions = torch.vstack([actions, winning_actions])
+            rewards = torch.vstack([rewards, winning_rewards])
+            dones = torch.vstack([dones, winning_dones])
 
         # if self.her:
         #     # set all state rewards to 0 and dones to False
-        #     rewards_her = torch.ones_like(rewards).to(self.device)
-        #     dones_her = torch.ones_like(dones).bool().to(self.device)
-        #     states_her = states.clone().to(self.device)
-        #     next_states_her = next_states.clone().to(self.device)
-        #     actions_her = actions.clone().to(self.device)
+        # rewards_her = torch.ones_like(rewards).to(self.device)
+        # dones_her = torch.ones_like(dones).bool().to(self.device)
+        # states_her = states.clone().to(self.device)
+        # next_states_her = next_states.clone().to(self.device)
+        # actions_her = actions.clone().to(self.device)
 
-        #     # sample non-terminal state and set dones
-        #     # sample_target_idx = torch.randint(0, states.shape[0], (1,1)).to(device).item()
-        #     # rewards_her[sample_target_idx] = 1.
-        #     # dones_her[sample_target_idx] = True
+        # sample non-terminal state and set dones
+        # sample_target_idx = torch.randint(0, states.shape[0], (1,1)).to(self.device).item()
+        # rewards_her[sample_target_idx] = 1.
+        # dones_her[sample_target_idx] = True
 
-        #     # set all other state rewards to 0
-        #     target_hand_pos = next_states[:, -6:-3]
-        #     states_her[:, -3:] = target_hand_pos[:,:]
-        #     next_states_her[:, -3:] = target_hand_pos[:,:]
+        # set all other state rewards to 0
+        # target_hand_pos = next_states[:, -6:-3]
+        # states_her[:, -3:] = target_hand_pos[:, :]
+        # next_states_her[:, -3:] = target_hand_pos[:, :]
 
-        #     states = torch.vstack([states, states_her])
-        #     next_states = torch.vstack([next_states, next_states_her])
-        #     actions = torch.vstack([actions, actions_her])
-        #     rewards = torch.vstack([rewards, rewards_her])
-        #     dones = torch.vstack([dones, dones_her])
+        # states = torch.vstack([states, states_her])
+        # next_states = torch.vstack([next_states, next_states_her])
+        # actions = torch.vstack([actions, actions_her])
+        # rewards = torch.vstack([rewards, rewards_her])
+        # dones = torch.vstack([dones, dones_her])
 
         target_action_values = (
             self.target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]

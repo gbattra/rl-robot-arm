@@ -24,6 +24,7 @@ class ApproachTaskActions(IntEnum):
 class ApproachTaskConfig:
     action_scale: float
     distance_threshold: float
+    gripper_offset_z: float
     max_episode_steps: int
 
 
@@ -37,6 +38,7 @@ class ApproachTask:
     action_size: int
     dof_targets: torch.Tensor
     distance_threshold: float
+    gripper_offest_z: float
 
 
 def initialize_approach_task(
@@ -63,6 +65,7 @@ def initialize_approach_task(
     env_steps = torch.zeros(sim.n_envs).to(device)
 
     return ApproachTask(
+        gripper_offest_z=config.gripper_offset_z,
         env_steps=env_steps,
         max_episode_steps=config.max_episode_steps,
         sim=sim,

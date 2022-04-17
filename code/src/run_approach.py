@@ -61,8 +61,6 @@ def main():
     sim_params.use_gpu_pipeline = True
     sim_params.up_axis = gymapi.UP_AXIS_Z
     sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
-    sim_params.dt = 0.02
-    sim_params.substeps = 1
 
     # arm asset configs
     arm_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
@@ -102,7 +100,7 @@ def main():
             height=0.075,
             depth=0.075,
             friction=0.1,
-            start_pose=gymapi.Transform(p=gymapi.Vec3(0.75, 0.75, 0.75)),
+            start_pose=gymapi.Transform(p=gymapi.Vec3(0.5, 0.5, 0.5)),
             asset_options=box_asset_options,
         ),
         compute_device=args.compute_device_id,
@@ -116,7 +114,7 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, distance_threshold=0.25, max_episode_steps=N_STEPS
+        action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.2, max_episode_steps=N_STEPS
     )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
