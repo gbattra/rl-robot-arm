@@ -85,7 +85,7 @@ def main():
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
     sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=20,
+        n_envs=100,
         env_spacing=1.5,
         n_envs_per_row=10,
         n_actors_per_env=2,
