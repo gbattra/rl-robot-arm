@@ -6,11 +6,13 @@ Class representing an agent for action selection and learning
 '''
 
 from abc import abstractmethod
-from typing import Callable
+from typing import Callable, Dict
 
 import torch
 from torch import nn
+from tqdm import trange
 from lib.rl.buffer import ReplayBuffer, Transition
+from lib.tasks.env import Env
 
 
 class Agent:
@@ -39,6 +41,15 @@ class Agent:
         '''
         Update the DQN based on experience
         '''
+        pass
+
+    @abstractmethod
+    def train(
+            self,
+            env: Env,
+            n_epochs: int,
+            n_episodes: int,
+            n_steps: int) -> Dict:
         pass
 
 
@@ -103,6 +114,31 @@ class ApproachBoxAgent(Agent):
             policy_actions = joint_a_vals.max(-1)[1].to(self.device)
             policy_actions[randoms] = random_actions[randoms]
         return policy_actions
+
+    def train(
+            self,
+            env: Env,
+            n_epochs: int,
+            n_episodes: int,
+            n_steps: int) -> Dict:
+        for p in trange(n_epochs, desc="Epoch", leave=False):
+            global_timestep = 0
+            for e in trange(n_episodes, desc="Episode", leave=False):
+                env.reset(None)
+                for t in trange(n_steps, desc="Step", leave=False):
+                    s = env.compute_observations()
+                    a = self.act(s, global_timestep)
+                    s_prime, r, done, _ = env.step(a)
+
+                    self.remember(s, a, s_prime, r, done)
+
+                    loss = self.optimize(t)
+                    # analytics(r, done, loss, p, e, t)
+
+                    # reset envs which have finished task
+                    env.reset(done)
+
+                    global_timestep += 1
 
     def optimize(self, timestep: int) -> torch.Tensor:
         n_joint_actions = self.n_dof_actions

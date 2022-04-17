@@ -9,7 +9,6 @@ from isaacgym import gymapi, gymutil
 from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning
 from lib.rl.buffer import ReplayBuffer
-from lib.rl.dqn import dqn
 from lib.rl.nn import NeuralNetwork
 from lib.sims.arm_and_box_sim import (
     ArmAndBoxSim,
@@ -62,8 +61,8 @@ def main():
     sim_params.use_gpu_pipeline = True
     sim_params.up_axis = gymapi.UP_AXIS_Z
     sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
-    # sim_params.dt = .0001
-    sim_params.substeps = 2
+    sim_params.dt = 0.02
+    sim_params.substeps = 1
 
     # arm asset configs
     arm_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
@@ -157,17 +156,17 @@ def main():
 
     analytics: Analytics = initialize_analytics(N_EPOCHS, N_EPISODES, N_STEPS, ANALYTICS_FREQ, sim_config.n_envs)
 
-    results = dqn(
-        env=env,
-        agent=agent,
-        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t),
-        n_epochs=N_EPOCHS,
-        n_episodes=N_EPISODES,
-        n_steps=N_STEPS
-    )
+    # results = dqn(
+    #     env=env,
+    #     agent=agent,
+    #     analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t),
+    #     n_epochs=N_EPOCHS,
+    #     n_episodes=N_EPISODES,
+    #     n_steps=N_STEPS
+    # )
 
     try:
-        pass
+        agent.train(env, N_EPOCHS, N_EPISODES, N_STEPS)
     except KeyboardInterrupt:
         print("Exitting..")
 
