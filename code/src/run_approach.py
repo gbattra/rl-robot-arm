@@ -9,7 +9,7 @@ from isaacgym import gymapi, gymutil
 
 from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning
-from lib.rl.buffer import ReplayBuffer
+from lib.rl.buffer import HerReplayBuffer, ReplayBuffer
 from lib.rl.dqn import dqn
 from lib.rl.nn import NeuralNetwork
 from lib.sims.arm_and_box_sim import (
@@ -44,14 +44,14 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.1
-EPS_DECAY: float = 0.97
+EPS_DECAY: float = 0.9995
 
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 64
 
 N_EPOCHS: int = 5
-N_EPISODES: int = 200
+N_EPISODES: int = 100
 N_STEPS: int = 100
 
 ANALYTICS_FREQ: int = 100
@@ -85,7 +85,7 @@ def main():
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
     sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=100,
+        n_envs=20,
         env_spacing=1.5,
         n_envs_per_row=10,
         n_actors_per_env=2,
@@ -129,6 +129,7 @@ def main():
     policy_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
     target_net: nn.Module = NeuralNetwork(approach_task_network(task)).to(device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE)
+    # buffer: ReplayBuffer = HerReplayBuffer(REPLAY_BUFFER_SIZE, sim_config.n_envs)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
@@ -170,6 +171,7 @@ def main():
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
         n_steps=N_STEPS,
+        her=True
     )
 
     try:

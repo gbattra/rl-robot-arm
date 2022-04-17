@@ -27,6 +27,7 @@ def dqn(
     n_epochs: int,
     n_episodes: int,
     n_steps: int,
+    her: bool = False
 ) -> Dict:
     for p in trange(n_epochs, desc="Epoch", leave=False):
         global_timestep = 0
@@ -38,9 +39,9 @@ def dqn(
                 s_prime, r, done, _ = step_task(a)
 
                 for i in range(s.shape[0]):
-                    buffer.add(Transition(s[i], a[i], s_prime[i], r[i], done[i]))
+                    buffer.add(Transition(s[i], a[i], s_prime[i], r[i], done[i]), i)
                     if done[i]:
-                        buffer.add_done(Transition(s[i], a[i], s_prime[i], r[i], done[i]))
+                        buffer.add_done(Transition(s[i], a[i], s_prime[i], r[i], done[i]), i)
 
                 loss = optimize(buffer, t)
                 analytics(r, done, loss, p, e, t)
@@ -49,4 +50,6 @@ def dqn(
                 reset_task(done)
 
                 global_timestep += 1
+            # if her:
+            #     buffer.flush_trajectories()
     return {}
