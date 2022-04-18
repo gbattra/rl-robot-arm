@@ -6,6 +6,7 @@ Class representing an agent for action selection and learning
 '''
 
 from abc import abstractmethod
+from time import time
 from typing import Callable, Dict
 
 import torch
@@ -56,6 +57,7 @@ class Agent:
 class DQNAgent(Agent):
     def __init__(
             self,
+            agent_id: int,
             n_dofs: int,
             n_dof_actions: int,
             buffer: ReplayBuffer,
@@ -71,7 +73,7 @@ class DQNAgent(Agent):
         super().__init__()
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+        self.agent_id = agent_id
         self.her = her
         self.n_dofs = n_dofs
         self.n_dof_actions = n_dof_actions
@@ -137,6 +139,7 @@ class DQNAgent(Agent):
                     # env.reset(done)
 
                     gt += 1
+            torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}_{time()}.pth')
 
     def optimize(self, timestep: int) -> torch.Tensor:
         n_joint_actions = self.n_dof_actions

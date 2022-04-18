@@ -49,8 +49,8 @@ TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 150
 DIM_SIZE: int = 500
 
-N_EPOCHS: int = 2
-N_EPISODES: int = 10
+N_EPOCHS: int = 4
+N_EPISODES: int = 100
 N_STEPS: int = 100
 
 PLOT_FREQ: int = 100
@@ -58,6 +58,7 @@ SAVE_FREQ: int = 99
 
 
 def run_experiment(
+    agent_id: int,
     action_scale: float,
     distance_threshold: float,
     dim_size: int,
@@ -90,6 +91,7 @@ def run_experiment(
     )
 
     agent: DQNAgent = DQNAgent(
+        agent_id=agent_id,
         n_dofs=task.sim.parts.arm.n_dofs,
         n_dof_actions=len(ApproachTaskActions),
         buffer=buffer,
@@ -104,6 +106,7 @@ def run_experiment(
     )
 
     analytics: Analytics = initialize_analytics(
+        agent_id=agent_id,
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
         n_timesteps=N_STEPS,
@@ -124,7 +127,7 @@ def run_experiment(
             N_EPISODES,
             N_STEPS,
             lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t))
-        save_analytics(analytics, f'lr_{lr}_ds_{dim_size}_as_{action_scale}_dt_{distance_threshold}_{time()}')
+        save_analytics(analytics)
     except KeyboardInterrupt:
         print("Exitting..")
 
@@ -202,11 +205,13 @@ def main():
     dim_sizes = [250, 500, 1000]
     action_scales = [0.1, 0.05, 0.25]
     distance_thresholds = [0.2, 0.1, 0.05]
+    agent_id = 1
     for lr in learning_rates:
         for dim_size in dim_sizes:
             for action_scale in action_scales:
                 for distance_threshold in distance_thresholds:
                     run_experiment(
+                        agent_id,
                         action_scale,
                         distance_threshold,
                         dim_size,
@@ -214,6 +219,7 @@ def main():
                         sim_config.n_envs,
                         sim,
                         gym)
+                    agent_id += 1
                 
     destroy_sim(sim, gym)
 

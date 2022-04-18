@@ -14,6 +14,7 @@ import numpy as np
 
 @dataclass
 class Analytics:
+    agent_id: int
     n_epochs: int
     n_episodes: int
     n_timesteps: int
@@ -31,6 +32,7 @@ class Analytics:
 
 
 def initialize_analytics(
+        agent_id: int,
         n_epochs: int,
         n_episodes: int,
         n_timesteps: int,
@@ -62,6 +64,7 @@ def initialize_analytics(
         dim_size=dim_size,
         action_scale=action_scale,
         dist_thresh=dist_thresh,
+        agent_id=agent_id,
         debug=debug
     )
     return analytics
@@ -80,9 +83,6 @@ def plot_learning(
     analytics.epoch_rewards[0, gt] += rewards.sum().item()
     analytics.epoch_episodes[0, gt] += dones.long().sum().item()
 
-    # env_episode_lengths = analytics.env_timesteps[dones]
-    # analytics.epoch_episode_lengths[epoch] += env_episode_lengths.sum().item()
-
     analytics.env_timesteps[dones] = 0
 
     if timestep % analytics.plot_freq != 0:
@@ -94,11 +94,10 @@ def plot_learning(
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
     plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
-        # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
+    # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
     plt.pause(0.1)
-    # plt.legend()
     if analytics.debug:
         plt.show(block=False)
 
@@ -106,7 +105,7 @@ def plot_learning(
         plt.savefig(f'figs/debug/dqn_{time()}.png')
 
 
-def save_analytics(analytics: Analytics, filename: str) -> None:
+def save_analytics(analytics: Analytics) -> None:
     plt.figure(1)
     plt.clf()
 
@@ -114,8 +113,8 @@ def save_analytics(analytics: Analytics, filename: str) -> None:
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
     plt.xlabel('Episode')
     plt.ylabel('Reward')
-    plt.suptitle('DQN Performance')
+    plt.suptitle(f'DQN Agent {analytics.agent_id}')
     plt.title(f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh}')
     plt.legend()
 
-    plt.savefig(f'figs/results/{filename}_{time()}.png')
+    plt.savefig(f'figs/results/DQN_{analytics.agent_id}_{time()}.png')
