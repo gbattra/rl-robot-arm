@@ -92,9 +92,9 @@ class ApproachBoxEnv(Env):
     def compute_observations(self) -> torch.Tensor:
         state: torch.Tensor = torch.cat(
             (
-                # self.dof_positions,
+                self.dof_positions,
                 # self.dof_velocities,
-                self.dof_targets,
+                # self.dof_targets,
                 self.hand_poses[:, 0:3],
                 self.box_poses[:, 0:3],
             ),
@@ -148,9 +148,10 @@ class ApproachBoxEnv(Env):
         signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.
         box_poses = (torch.ones((self.n_envs, 3)).to(self.device) * 0.25 + (rands * 0.5)) * signs
         
-        # box_poses[..., 0] = .5
-        # box_poses[..., 1] = .5
-        box_poses[..., 2] = .0
+        box_poses[..., 0] = .5
+        box_poses[..., 1] = .5
+        box_poses[..., 2] = .05
+        # box_poses[..., 2] = torch.abs(box_poses[..., 2])
 
         root_states = self.init_root.clone().to(self.device)
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
@@ -177,18 +178,24 @@ class ApproachBoxEnv(Env):
         """
         self.env_current_steps[:] += 1
         actions = (actions.float() - 1.0) * self.action_scale
-        targets = self.dof_targets + actions
+        # targets = self.dof_targets + actions
+        targets = self.dof_positions[:, :] + actions
         targets = torch_utils.tensor_clamp(
             targets,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
 
-        self.dof_targets[:,:] = targets[:,:]
+        # self.dof_targets[:,:] = targets[:,:]
 
-        self.gym.set_dof_position_target_tensor(
-            self.sim, gymtorch.unwrap_tensor(self.dof_targets)
-        )
+        # self.gym.set_dof_position_target_tensor(
+        #     self.sim, gymtorch.unwrap_tensor(self.dof_targets)
+        # )
+
+        self.dof_positions[:, :] = targets[:,:]
+        self.dof_velocities[:, :] = .0
+        self.dof_targets[:, :] = targets[:, :]
+        self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
 
         self.tick()
 

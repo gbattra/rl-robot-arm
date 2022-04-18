@@ -6,6 +6,7 @@ Functions for plotting learning
 '''
 
 from dataclasses import dataclass
+from time import time
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,19 +17,31 @@ class Analytics:
     n_epochs: int
     n_episodes: int
     n_timesteps: int
-    analytics_freq: int
+    plot_freq: int
+    save_freq: int
     env_timesteps: torch.Tensor
     epoch_rewards: torch.Tensor
     epoch_episodes: torch.Tensor
     epoch_episode_lengths: torch.Tensor
+    lr: float
+    dim_size: float
+    action_scale: float
+    dist_thresh: float
+    debug: bool
 
 
 def initialize_analytics(
         n_epochs: int,
         n_episodes: int,
         n_timesteps: int,
-        analytics_freq: int,
-        n_envs: int) -> Analytics:
+        n_envs: int,
+        plot_freq: int,
+        save_freq: int,
+        lr: float,
+        dim_size: float,
+        action_scale: float,
+        dist_thresh: float,
+        debug: bool = False) -> Analytics:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     env_timesteps = torch.zeros((n_envs, 1)).to(device)
     epoch_rewards = torch.zeros((1, n_episodes * n_epochs)).to(device)
@@ -39,11 +52,17 @@ def initialize_analytics(
         n_epochs=n_epochs,
         n_episodes=n_episodes,
         n_timesteps=n_timesteps,
-        analytics_freq=analytics_freq,
+        plot_freq=plot_freq,
+        save_freq=save_freq,
         env_timesteps=env_timesteps,
         epoch_rewards=epoch_rewards,
         epoch_episodes=epoch_episodes,
-        epoch_episode_lengths=epoch_episode_lengths
+        epoch_episode_lengths=epoch_episode_lengths,
+        lr=lr,
+        dim_size=dim_size,
+        action_scale=action_scale,
+        dist_thresh=dist_thresh,
+        debug=debug
     )
     return analytics
 
@@ -56,16 +75,17 @@ def plot_learning(
         epoch: int,
         episode: int,
         timestep: int) -> None:
+    gt = (epoch * analytics.n_episodes) + episode
     analytics.env_timesteps[:] += 1
-    analytics.epoch_rewards[0, (epoch * analytics.n_episodes) + episode] += rewards.sum().item()
-    analytics.epoch_episodes[0, (epoch * analytics.n_episodes) + episode] += dones.long().sum().item()
+    analytics.epoch_rewards[0, gt] += rewards.sum().item()
+    analytics.epoch_episodes[0, gt] += dones.long().sum().item()
 
     # env_episode_lengths = analytics.env_timesteps[dones]
     # analytics.epoch_episode_lengths[epoch] += env_episode_lengths.sum().item()
 
     analytics.env_timesteps[dones] = 0
 
-    if timestep % analytics.analytics_freq != 0:
+    if timestep % analytics.plot_freq != 0:
         return
 
     plt.figure(1)
@@ -73,15 +93,29 @@ def plot_learning(
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
-    for e in range(epoch+1):
-        plt.plot(epoch_rewards[0, :(epoch * analytics.n_episodes) + episode] / analytics.env_timesteps.shape[0], label=f'Epoch {e} Reward')
+    plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
         # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
-    # if len(d_t) >= 100:
-    #         means = d_t.unfold(0, 100, 1).mean(1).view(-1)
-    #         means = torch.cat((torch.zeros(99), means))
-    #         plt.plot(means.numpy(), label=label)
     plt.pause(0.1)
     # plt.legend()
-    plt.show(block=False)
+    if analytics.debug:
+        plt.show(block=False)
+
+    if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
+        plt.savefig(f'figs/debug/dqn_{time()}.png')
+
+
+def save_analytics(analytics: Analytics, filename: str) -> None:
+    plt.figure(1)
+    plt.clf()
+
+    epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
+    plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.suptitle('DQN Performance')
+    plt.title(f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh}')
+    plt.legend()
+
+    plt.savefig(f'figs/results/{filename}_{time()}.png')
