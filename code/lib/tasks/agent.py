@@ -119,13 +119,13 @@ class DQNAgent(Agent):
             n_episodes: int,
             n_steps: int,
             analytics: Callable) -> Dict:
-        global_timestep = 0
+        gt = 0
         for p in trange(n_epochs, desc="Epoch", leave=False):
             for e in trange(n_episodes, desc="Episode", leave=False):
                 env.reset(None)
                 for t in trange(n_steps, desc="Step", leave=False):
                     s = env.compute_observations()
-                    a = self.act(s, global_timestep)
+                    a = self.act(s, gt)
                     s_prime, r, done, _ = env.step(a)
 
                     self.remember(s, a, s_prime, r, done)
@@ -134,9 +134,9 @@ class DQNAgent(Agent):
                     analytics(r, done, loss, p, e, t)
 
                     # reset envs which have finished task
-                    env.reset(done)
+                    # env.reset(done)
 
-                    global_timestep += 1
+                    gt += 1
 
     def optimize(self, timestep: int) -> torch.Tensor:
         n_joint_actions = self.n_dof_actions
@@ -150,15 +150,15 @@ class DQNAgent(Agent):
         states, actions, next_states, rewards, dones = samples
 
         # if not self.her:
-        if self.buffer.winning_index > batch_size or self.buffer.winning_buffers_filled:
-            winning_samples = self.buffer.sample(batch_size, winning=True)
-            winning_states, winning_actions, winning_next_states, winning_rewards, winning_dones = winning_samples
+        # if self.buffer.winning_index > batch_size or self.buffer.winning_buffers_filled:
+        #     winning_samples = self.buffer.sample(batch_size, winning=True)
+        #     winning_states, winning_actions, winning_next_states, winning_rewards, winning_dones = winning_samples
 
-            states = torch.vstack([states, winning_states])
-            next_states = torch.vstack([next_states, winning_next_states])
-            actions = torch.vstack([actions, winning_actions])
-            rewards = torch.vstack([rewards, winning_rewards])
-            dones = torch.vstack([dones, winning_dones])
+        #     states = torch.vstack([states, winning_states])
+        #     next_states = torch.vstack([next_states, winning_next_states])
+        #     actions = torch.vstack([actions, winning_actions])
+        #     rewards = torch.vstack([rewards, winning_rewards])
+        #     dones = torch.vstack([dones, winning_dones])
 
         # if self.her:
         #     # set all state rewards to 0 and dones to False

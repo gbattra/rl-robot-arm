@@ -57,7 +57,7 @@ def initialize_approach_task(
     obs_size = (
         curent_dof_pos_size \
         # + current_dof_vel_size \
-        + target_dof_pos_size \
+        # + target_dof_pos_size \
         + hand_pos_size + box_pos_size
     )
     action_size = n_actions * n_dofs

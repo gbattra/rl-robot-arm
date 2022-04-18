@@ -13,6 +13,9 @@ import numpy as np
 
 @dataclass
 class Analytics:
+    n_epochs: int
+    n_episodes: int
+    n_timesteps: int
     analytics_freq: int
     env_timesteps: torch.Tensor
     epoch_rewards: torch.Tensor
@@ -28,11 +31,14 @@ def initialize_analytics(
         n_envs: int) -> Analytics:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     env_timesteps = torch.zeros((n_envs, 1)).to(device)
-    epoch_rewards = torch.zeros((n_epochs, n_episodes)).to(device)
-    epoch_episodes = torch.zeros((n_epochs, n_episodes)).to(device)
-    epoch_episode_lengths = torch.zeros((n_epochs, n_episodes)).to(device)
+    epoch_rewards = torch.zeros((1, n_episodes * n_epochs)).to(device)
+    epoch_episodes = torch.zeros((1, n_episodes * n_epochs)).to(device)
+    epoch_episode_lengths = torch.zeros((1, n_episodes * n_epochs)).to(device)
 
     analytics = Analytics(
+        n_epochs=n_epochs,
+        n_episodes=n_episodes,
+        n_timesteps=n_timesteps,
         analytics_freq=analytics_freq,
         env_timesteps=env_timesteps,
         epoch_rewards=epoch_rewards,
@@ -51,8 +57,8 @@ def plot_learning(
         episode: int,
         timestep: int) -> None:
     analytics.env_timesteps[:] += 1
-    analytics.epoch_rewards[epoch, episode] = analytics.epoch_rewards[epoch, episode] + rewards.sum().item()
-    analytics.epoch_episodes[epoch, episode] = analytics.epoch_episodes[epoch, episode] + dones.long().sum().item()
+    analytics.epoch_rewards[0, (epoch * analytics.n_episodes) + episode] += rewards.sum().item()
+    analytics.epoch_episodes[0, (epoch * analytics.n_episodes) + episode] += dones.long().sum().item()
 
     # env_episode_lengths = analytics.env_timesteps[dones]
     # analytics.epoch_episode_lengths[epoch] += env_episode_lengths.sum().item()
@@ -68,7 +74,7 @@ def plot_learning(
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
     for e in range(epoch+1):
-        plt.plot(epoch_rewards[e, :episode] / analytics.env_timesteps.shape[0], label=f'Epoch {e} Reward')
+        plt.plot(epoch_rewards[0, :(epoch * analytics.n_episodes) + episode] / analytics.env_timesteps.shape[0], label=f'Epoch {e} Reward')
         # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 

@@ -38,15 +38,16 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.1
-EPS_DECAY: float = 0.9999
+EPS_DECAY: float = 0.9998
 
-REPLAY_BUFFER_SIZE: int = 10000
-TARGET_UPDATE_FREQ: int = 100
+REPLAY_BUFFER_SIZE: int = 10000000
+TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 150
+DIM_SIZE: int = 124
 
 N_EPOCHS: int = 5
 N_EPISODES: int = 100
-N_STEPS: int = 200
+N_STEPS: int = 100
 
 ANALYTICS_FREQ: int = 100
 
@@ -115,15 +116,15 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.125, gripper_offset_z=0.1, distance_threshold=0.2, max_episode_steps=N_STEPS
+        action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.25, max_episode_steps=N_STEPS
     )
 
     gym: gymapi.Gym = gymapi.acquire_gym()
     sim: ArmAndBoxSim = initialize_sim(sim_config, gym)
     task: ApproachTask = initialize_approach_task(task_config, sim, gym)
 
-    policy_net: nn.Module = DQN(task.observation_size, task.action_size, 150).to(device)
-    target_net: nn.Module = DQN(task.observation_size, task.action_size, 150).to(device)
+    policy_net: nn.Module = DQN(task.observation_size, task.action_size, DIM_SIZE).to(device)
+    target_net: nn.Module = DQN(task.observation_size, task.action_size, DIM_SIZE).to(device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, task.observation_size, sim.parts.arm.n_dofs, sim_config.n_envs)
     # buffer: ReplayBuffer = HerReplayBuffer(REPLAY_BUFFER_SIZE, sim_config.n_envs)
 

@@ -30,11 +30,11 @@ class ReplayBuffer:
         self.action_size = action_size
         self.n_envs = n_envs
 
-        self.states_buffer = torch.zeros((n_envs, size, state_size)).to(self.device)
-        self.actions_buffer = torch.zeros((n_envs, size, action_size)).long().to(self.device)
-        self.next_states_buffer = torch.zeros((n_envs, size, state_size)).to(self.device)
-        self.rewards_buffer = torch.zeros((n_envs, size, 1)).to(self.device)
-        self.dones_buffer = torch.zeros((n_envs, size, 1)).bool().to(self.device)
+        self.states_buffer = torch.zeros((size, state_size)).to(self.device)
+        self.actions_buffer = torch.zeros((size, action_size)).long().to(self.device)
+        self.next_states_buffer = torch.zeros((size, state_size)).to(self.device)
+        self.rewards_buffer = torch.zeros((size, 1)).to(self.device)
+        self.dones_buffer = torch.zeros((size, 1)).bool().to(self.device)
 
         self.winning_states_buffer = torch.zeros((size, state_size)).to(self.device)
         self.winning_actions_buffer = torch.zeros((size, action_size)).long().to(self.device)
@@ -48,13 +48,16 @@ class ReplayBuffer:
             next_states: torch.Tensor,
             rwds: torch.Tensor,
             dones: torch.Tensor) -> None:
-        self.states_buffer[:, self.sample_index, :] = states[:]
-        self.actions_buffer[:, self.sample_index, :] = actions[:]
-        self.next_states_buffer[:, self.sample_index, :] = next_states[:]
-        self.rewards_buffer[:, self.sample_index, :] = rwds[:]
-        self.dones_buffer[:, self.sample_index, :] = dones[:]
+        n_samples = states.shape[0]
+        if self.sample_index + n_samples >= self.size - 1:
+            n_samples = self.size - self.sample_index
+        self.states_buffer[self.sample_index:self.sample_index+n_samples, :] = states.view(-1, states.shape[-1])[:n_samples,:]
+        self.actions_buffer[self.sample_index:self.sample_index+n_samples, :] = actions.view(-1, actions.shape[-1])[:n_samples,:]
+        self.next_states_buffer[self.sample_index:self.sample_index+n_samples, :] = next_states.view(-1, next_states.shape[-1])[:n_samples,:]
+        self.rewards_buffer[self.sample_index:self.sample_index+n_samples, :] = rwds.view(-1, rwds.shape[-1])[:n_samples,:]
+        self.dones_buffer[self.sample_index:self.sample_index+n_samples, :] = dones.view(-1, dones.shape[-1])[:n_samples,:]
         
-        self.sample_index += 1
+        self.sample_index += n_samples
         if self.sample_index >= self.size - 1:
             self.sample_index = 0
             self.sample_buffers_filled = True
@@ -73,7 +76,7 @@ class ReplayBuffer:
         if sample_size == 0:
             return
         if self.winning_index + sample_size >= self.size:
-            sample_size = self.size - self.winning_index
+            sample_size = self.size - self.winning_index - 1
         self.winning_states_buffer[self.winning_index:self.winning_index + sample_size, :] = states[_winning][:sample_size, :]
         self.winning_actions_buffer[self.winning_index:self.winning_index + sample_size, :] = actions[_winning][:sample_size, :]
         self.winning_next_states_buffer[self.winning_index:self.winning_index + sample_size, :] = next_states[_winning][:sample_size, :]
@@ -82,6 +85,7 @@ class ReplayBuffer:
 
         self.winning_index += sample_size
         if self.winning_index >= self.size - 1:
+            self.print('winning buffer filled')
             self.winning_index = 0
             self.winning_buffers_filled = True
 
@@ -104,13 +108,12 @@ class ReplayBuffer:
             return self._sample_winnings(batch_size)
 
         max_step_idx = self.size if self.sample_buffers_filled else self.sample_index
-        env_idxs = torch.randint(0, self.n_envs, (batch_size, 1)).squeeze(-1)
         step_idxs = torch.randint(0, max_step_idx, (batch_size, 1)).squeeze(-1)
 
-        sample_states = self.states_buffer[env_idxs, step_idxs, :]
-        sample_actions = self.actions_buffer[env_idxs, step_idxs, :]
-        sample_next_states = self.next_states_buffer[env_idxs, step_idxs, :]
-        sample_rwds = self.rewards_buffer[env_idxs, step_idxs, :]
-        sample_dones = self.dones_buffer[env_idxs, step_idxs, :]
+        sample_states = self.states_buffer[step_idxs, :]
+        sample_actions = self.actions_buffer[step_idxs, :]
+        sample_next_states = self.next_states_buffer[step_idxs, :]
+        sample_rwds = self.rewards_buffer[step_idxs, :]
+        sample_dones = self.dones_buffer[step_idxs, :]
 
         return sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones

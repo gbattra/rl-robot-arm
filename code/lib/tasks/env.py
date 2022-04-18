@@ -92,7 +92,7 @@ class ApproachBoxEnv(Env):
     def compute_observations(self) -> torch.Tensor:
         state: torch.Tensor = torch.cat(
             (
-                self.dof_positions,
+                # self.dof_positions,
                 # self.dof_velocities,
                 self.dof_targets,
                 self.hand_poses[:, 0:3],
@@ -110,18 +110,18 @@ class ApproachBoxEnv(Env):
         ).to(self.device)
         winning: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
         rwds: torch.Tensor = torch.ones_like(winning).float().to(self.device)
-        rwds[~winning] = .0
+        rwds[~winning] = -.005
         return rwds.unsqueeze(-1)
 
     def compute_dones(self) -> torch.Tensor:
-        distances: torch.Tensor = torch.norm(
-            self.left_finger_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
-        ).to(self.device)
-        dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
-        return dones.unsqueeze(-1)
-        # if self.env_current_steps[0] >= self.max_episode_steps:
-        #     return torch.ones((self.n_envs, 1)).bool().to(self.device)
-        # return torch.zeros((self.n_envs, 1)).bool().to(self.device)
+        # distances: torch.Tensor = torch.norm(
+        #     self.left_finger_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
+        # ).to(self.device)
+        # dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
+        # return dones.unsqueeze(-1)
+        if self.env_current_steps[0] >= self.max_episode_steps:
+            return torch.ones((self.n_envs, 1)).bool().to(self.device)
+        return torch.zeros((self.n_envs, 1)).bool().to(self.device)
 
     def reset(self, dones: Optional[torch.Tensor]) -> None:
         reset_envs = torch.arange(self.n_envs).to(self.device)
@@ -136,7 +136,7 @@ class ApproachBoxEnv(Env):
         conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs)).to(self.device) * 2.) - 1.
         arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
         arm_confs = torch_utils.tensor_clamp(
-            arm_confs* (2 * math.pi) * conf_signs,
+            arm_confs, # * (2 * math.pi) * conf_signs,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
@@ -148,8 +148,8 @@ class ApproachBoxEnv(Env):
         signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.
         box_poses = (torch.ones((self.n_envs, 3)).to(self.device) * 0.25 + (rands * 0.5)) * signs
         
-        box_poses[..., 0] = .5
-        box_poses[..., 1] = .5
+        # box_poses[..., 0] = .5
+        # box_poses[..., 1] = .5
         box_poses[..., 2] = .0
 
         root_states = self.init_root.clone().to(self.device)
