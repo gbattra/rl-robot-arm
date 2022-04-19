@@ -1,3 +1,5 @@
 * issac gym API docs
 * stack overflow
 * git@github.com:bulletphysics/bullet3.git
+* torch documentation
+* https://sparrow.dev/pytorch-one-hot-encoding/

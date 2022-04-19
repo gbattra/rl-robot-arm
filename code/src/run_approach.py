@@ -63,13 +63,14 @@ def run_experiment(
     distance_threshold: float,
     dim_size: int,
     lr: float,
+    ep_length: int,
     n_envs: int,
     sim: Sim,
     gym: gymapi.Gym
 ) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=action_scale, gripper_offset_z=0.1, distance_threshold=distance_threshold, max_episode_steps=N_STEPS
+        action_scale=action_scale, gripper_offset_z=0.1, distance_threshold=distance_threshold, max_episode_steps=ep_length
     )
 
     task: ApproachTask = initialize_approach_task(task_config, sim, gym)
@@ -109,11 +110,12 @@ def run_experiment(
         agent_id=agent_id,
         n_epochs=N_EPOCHS,
         n_episodes=N_EPISODES,
-        n_timesteps=N_STEPS,
+        n_timesteps=ep_length,
         n_envs=n_envs,
         plot_freq=PLOT_FREQ,
         save_freq=SAVE_FREQ,
         lr=lr,
+        ep_length=ep_length,
         dim_size=dim_size,
         action_scale=action_scale,
         dist_thresh=distance_threshold,
@@ -125,7 +127,7 @@ def run_experiment(
             env,
             N_EPOCHS,
             N_EPISODES,
-            N_STEPS,
+            ep_length,
             lambda r, d, l, p, e, t: plot_learning(analytics, r, d, l, p, e, t))
         save_analytics(analytics)
     except KeyboardInterrupt:
@@ -203,23 +205,37 @@ def main():
 
     learning_rates = [0.001, 0.0001]
     dim_sizes = [250, 500, 1000]
-    action_scales = [0.1, 0.05, 0.25]
+    action_scales = [0.1, 0.05, 0.025]
     distance_thresholds = [0.2, 0.1, 0.05]
+    episode_lengths = [100, 200]
     agent_id = 1
+    # run_experiment(
+    #     agent_id,
+    #     action_scales[0],
+    #     distance_thresholds[0],
+    #     dim_sizes[0],
+    #     learning_rates[0],
+    #     10,
+    #     sim_config.n_envs,
+    #     sim,
+    #     gym
+    # )
     for lr in learning_rates:
         for dim_size in dim_sizes:
             for action_scale in action_scales:
                 for distance_threshold in distance_thresholds:
-                    run_experiment(
-                        agent_id,
-                        action_scale,
-                        distance_threshold,
-                        dim_size,
-                        lr,
-                        sim_config.n_envs,
-                        sim,
-                        gym)
-                    agent_id += 1
+                    for episode_length in episode_lengths:
+                        run_experiment(
+                            agent_id,
+                            action_scale,
+                            distance_threshold,
+                            dim_size,
+                            lr,
+                            episode_length,
+                            sim_config.n_envs,
+                            sim,
+                            gym)
+                        agent_id += 1
                 
     destroy_sim(sim, gym)
 

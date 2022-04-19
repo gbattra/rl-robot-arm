@@ -25,6 +25,7 @@ class Analytics:
     epoch_episodes: torch.Tensor
     epoch_episode_lengths: torch.Tensor
     lr: float
+    ep_length: int
     dim_size: float
     action_scale: float
     dist_thresh: float
@@ -40,6 +41,7 @@ def initialize_analytics(
         plot_freq: int,
         save_freq: int,
         lr: float,
+        ep_length: int,
         dim_size: float,
         action_scale: float,
         dist_thresh: float,
@@ -61,6 +63,7 @@ def initialize_analytics(
         epoch_episodes=epoch_episodes,
         epoch_episode_lengths=epoch_episode_lengths,
         lr=lr,
+        ep_length=ep_length,
         dim_size=dim_size,
         action_scale=action_scale,
         dist_thresh=dist_thresh,
@@ -97,8 +100,8 @@ def plot_learning(
     # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
-    plt.pause(0.1)
     if analytics.debug:
+        plt.pause(0.1)
         plt.show(block=False)
 
     if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
@@ -106,15 +109,16 @@ def plot_learning(
 
 
 def save_analytics(analytics: Analytics) -> None:
-    plt.figure(1)
+    plt.figure(figsize=(9, 7))
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
-    plt.xlabel('Episode')
+    desc = f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh} | Epsd. Length: {analytics.ep_length}'
+    plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')
-    plt.suptitle(f'DQN Agent {analytics.agent_id}')
-    plt.title(f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh}')
+    plt.title(f'DQN Agent {analytics.agent_id}')
+
     plt.legend()
 
     plt.savefig(f'figs/results/DQN_{analytics.agent_id}_{time()}.png')
