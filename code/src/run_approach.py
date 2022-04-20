@@ -46,7 +46,7 @@ EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 100
-BATCH_SIZE: int = 150
+BATCH_SIZE: int = 1000
 DIM_SIZE: int = 500
 
 N_EPOCHS: int = 4
@@ -59,6 +59,7 @@ SAVE_FREQ: int = 99
 
 def run_experiment(
     agent_id: int,
+    two_layers: bool,
     action_scale: float,
     distance_threshold: float,
     dim_size: int,
@@ -75,8 +76,8 @@ def run_experiment(
 
     task: ApproachTask = initialize_approach_task(task_config, sim, gym)
 
-    policy_net: nn.Module = DQN(task.observation_size, task.action_size, dim_size).to(device)
-    target_net: nn.Module = DQN(task.observation_size, task.action_size, dim_size).to(device)
+    policy_net: nn.Module = DQN(task.observation_size, task.action_size, dim_size, two_layers).to(device)
+    target_net: nn.Module = DQN(task.observation_size, task.action_size, dim_size, two_layers).to(device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, task.observation_size, sim.parts.arm.n_dofs, n_envs)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=lr)
@@ -138,7 +139,6 @@ def run_experiment(
 def main():
 
     args = gymutil.parse_arguments()
-
     sim_params: gymapi.SimParams = gymapi.SimParams()
     sim_params.use_gpu_pipeline = True
     sim_params.up_axis = gymapi.UP_AXIS_Z
@@ -156,8 +156,8 @@ def main():
     # box assset configs
     box_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
     box_asset_options.density = 4.0
-    box_asset_options.fix_base_link = True
-    box_asset_options.disable_gravity = True
+    # box_asset_options.fix_base_link = True
+    # box_asset_options.disable_gravity = True
 
 
     # plane config
@@ -165,12 +165,12 @@ def main():
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
     sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=100,
+        n_envs=1000,
         env_spacing=1.5,
         n_envs_per_row=10,
         n_actors_per_env=2,
         arm_config=ArmConfig(
-            hand_link="panda_hand",
+            hand_link="panda_link7",
             left_finger_link="panda_leftfinger",
             right_finger_link="panda_rightfinger",
             asset_config=AssetConfig(
@@ -207,36 +207,25 @@ def main():
     dim_sizes = [250, 500, 1000]
     action_scales = [0.1, 0.05, 0.025]
     distance_thresholds = [0.2, 0.1, 0.05]
-    episode_lengths = [100, 200]
+    episode_lengths = [200, 400]
     agent_id = 1
-    # run_experiment(
-    #     agent_id,
-    #     action_scales[0],
-    #     distance_thresholds[0],
-    #     dim_sizes[0],
-    #     learning_rates[0],
-    #     10,
-    #     sim_config.n_envs,
-    #     sim,
-    #     gym
-    # )
-    for lr in learning_rates:
-        for dim_size in dim_sizes:
-            for action_scale in action_scales:
-                for distance_threshold in distance_thresholds:
-                    for episode_length in episode_lengths:
-                        run_experiment(
-                            agent_id,
-                            action_scale,
-                            distance_threshold,
-                            dim_size,
-                            lr,
-                            episode_length,
-                            sim_config.n_envs,
-                            sim,
-                            gym)
-                        agent_id += 1
-                
+    for dim_size in dim_sizes:
+        for action_scale in action_scales:
+            for i in range(2):
+                two_layers = i > 0
+                run_experiment(
+                    agent_id,
+                    two_layers,
+                    action_scale,
+                    distance_thresholds[0],
+                    dim_size,
+                    0.0001,
+                    200,
+                    sim_config.n_envs,
+                    sim,
+                    gym
+                )
+                agent_id += 1
     destroy_sim(sim, gym)
 
 
