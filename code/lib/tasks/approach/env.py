@@ -400,13 +400,13 @@ def compute_rewards(
     h_closest = h_distances.le(0.075)
     h_on_target = h_distances.le(0.045)
 
-    rwds[lf_close * rf_close * h_close, :] = .01
-    rwds[lf_closer * rf_closer * h_closer, :] = .05
-    rwds[lf_closest * rf_closest * h_closest, :] = .5
-    rwds[lf_on_target * rf_on_target * h_on_target, :] = 1.
+    rwds[lf_close * rf_close * h_close, :] = .1
+    rwds[lf_closer * rf_closer * h_closer, :] = .5
+    rwds[lf_closest * rf_closest * h_closest, :] = 1.
+    rwds[lf_on_target * rf_on_target * h_on_target, :] = 2.
 
-    box_lifted = ((box_poses[:, 2] > 0.05) * lf_closer * rf_closer)
-    box_z_rwd = torch.zeros_like(rwds).to(device)
-    box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(box_poses[box_lifted, 2], 0, 1.))) * 10.).unsqueeze(-1)
-    rwds[:, :] += box_z_rwd
+    # box_lifted = ((box_poses[:, 2] > 0.05) * lf_closer * rf_closer)
+    # box_z_rwd = torch.zeros_like(rwds).to(device)
+    # box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(box_poses[box_lifted, 2], 0, 1.))) * 10.).unsqueeze(-1)
+    # rwds[:, :] += box_z_rwd
     return rwds

@@ -15,6 +15,7 @@ import numpy as np
 @dataclass
 class Analytics:
     agent_id: int
+    n_envs: int
     n_epochs: int
     n_episodes: int
     n_timesteps: int
@@ -29,6 +30,7 @@ class Analytics:
     dim_size: float
     action_scale: float
     dist_thresh: float
+    two_layers: bool
     debug: bool
 
 
@@ -45,6 +47,7 @@ def initialize_analytics(
         dim_size: float,
         action_scale: float,
         dist_thresh: float,
+        two_layers: bool,
         debug: bool = False) -> Analytics:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     env_timesteps = torch.zeros((n_envs, 1)).to(device)
@@ -53,6 +56,7 @@ def initialize_analytics(
     epoch_episode_lengths = torch.zeros((1, n_episodes * n_epochs)).to(device)
 
     analytics = Analytics(
+        n_envs=n_envs,
         n_epochs=n_epochs,
         n_episodes=n_episodes,
         n_timesteps=n_timesteps,
@@ -68,6 +72,7 @@ def initialize_analytics(
         action_scale=action_scale,
         dist_thresh=dist_thresh,
         agent_id=agent_id,
+        two_layers=two_layers,
         debug=debug
     )
     return analytics
@@ -114,7 +119,8 @@ def save_analytics(analytics: Analytics) -> None:
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
-    desc = f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh} | Epsd. Length: {analytics.ep_length}'
+    desc = f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh} \n'\
+        + f'| Epsd. Length: {analytics.ep_length} | N Envs: {analytics.n_envs} | Two Layers: {analytics.two_layers}'
     plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')
     plt.title(f'DQN Agent {analytics.agent_id}')

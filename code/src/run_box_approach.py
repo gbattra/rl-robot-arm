@@ -47,20 +47,20 @@ from lib.tasks.task import (
 )
 
 GAMMA: float = 0.99
-LEARNING_RATE: float = 0.0001
+LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
 EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 10000000
-TARGET_UPDATE_FREQ: int = 100
-BATCH_SIZE: int = 1000
+TARGET_UPDATE_FREQ: int = 10000
+BATCH_SIZE: int = 5
 DIM_SIZE: int = 500
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 100
+N_STEPS: int = 200
 
 PLOT_FREQ: int = 100
 SAVE_FREQ: int = 99
@@ -92,100 +92,104 @@ def main():
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
-    sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-        n_envs=4000,
-        env_spacing=1.5,
-        n_envs_per_row=10,
-        n_actors_per_env=2,
-        arm_config=ArmConfig(
-            hand_link="panda_link7",
-            left_finger_link="panda_leftfinger",
-            right_finger_link="panda_rightfinger",
-            asset_config=AssetConfig(
-                asset_root="assets",
-                asset_file="urdf/franka_description/robots/franka_panda.urdf",
-                asset_options=arm_asset_options,
-            ),
-            stiffness=8000,
-            damping=4000,
-            start_pose=gymapi.Transform(),
-        ),
-        box_config=BoxConfig(
-            width=0.075,
-            height=0.075,
-            depth=0.075,
-            friction=0.1,
-            start_pose=gymapi.Transform(p=gymapi.Vec3(0.5, 0.5, 0.5)),
-            asset_options=box_asset_options,
-        ),
-        compute_device=args.compute_device_id,
-        graphics_device=args.graphics_device_id,
-        physics_engine=gymapi.SIM_PHYSX,
-        sim_params=sim_params,
-        plane_params=plane_params,
-        viewer_config=ViewerConfig(
-            headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
-        ),
-    )
+    for dim in [250, 512]:
+        for n_envs in [100, 1000, 4000]:
+            for two_layers in [True, False]:
+                sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
+                    n_envs=n_envs,
+                    env_spacing=1.5,
+                    n_envs_per_row=10,
+                    n_actors_per_env=2,
+                    arm_config=ArmConfig(
+                        hand_link="panda_link7",
+                        left_finger_link="panda_leftfinger",
+                        right_finger_link="panda_rightfinger",
+                        asset_config=AssetConfig(
+                            asset_root="assets",
+                            asset_file="urdf/franka_description/robots/franka_panda.urdf",
+                            asset_options=arm_asset_options,
+                        ),
+                        stiffness=8000,
+                        damping=4000,
+                        start_pose=gymapi.Transform(),
+                    ),
+                    box_config=BoxConfig(
+                        width=0.075,
+                        height=0.075,
+                        depth=0.075,
+                        friction=0.1,
+                        start_pose=gymapi.Transform(p=gymapi.Vec3(0.5, 0.5, 0.5)),
+                        asset_options=box_asset_options,
+                    ),
+                    compute_device=args.compute_device_id,
+                    graphics_device=args.graphics_device_id,
+                    physics_engine=gymapi.SIM_PHYSX,
+                    sim_params=sim_params,
+                    plane_params=plane_params,
+                    viewer_config=ViewerConfig(
+                        headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
+                    ),
+                )
 
-    task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
-    )
+                task_config: ApproachTaskConfig = ApproachTaskConfig(
+                    action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
+                )
 
-    epsilon: Callable[[int], float] = lambda t: max(
-        EPS_END, EPS_START * (EPS_DECAY**t)
-    )
-    
-    env = ApproachEnv(sim_config, task_config)
+                epsilon: Callable[[int], float] = lambda t: max(
+                    EPS_END, EPS_START * (EPS_DECAY**t)
+                )
+                
+                env = ApproachEnv(sim_config, task_config)
 
-    policy_net: nn.Module = DQN(env.observation_size, env.action_size, 512, False).to(env.device)
-    target_net: nn.Module = DQN(env.observation_size, env.action_size, 512, False).to(env.device)
-    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
+                policy_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+                target_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+                buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
 
-    optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
-    loss_fn = nn.MSELoss()
+                optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
+                loss_fn = nn.MSELoss()
 
-    agent: DQNAgent = DQNAgent(
-        agent_id=1,
-        n_dofs=env.arm_n_dofs,
-        n_dof_actions=len(ApproachTaskActions),
-        buffer=buffer,
-        policy_net=policy_net,
-        target_net=target_net,
-        loss_fn=loss_fn,
-        optimizer=optimizer,
-        epsilon=epsilon,
-        gamma=GAMMA,
-        batch_size=BATCH_SIZE,
-        target_update_freq=TARGET_UPDATE_FREQ
-    )
+                agent: DQNAgent = DQNAgent(
+                    agent_id=1,
+                    n_dofs=env.arm_n_dofs,
+                    n_dof_actions=len(ApproachTaskActions),
+                    buffer=buffer,
+                    policy_net=policy_net,
+                    target_net=target_net,
+                    loss_fn=loss_fn,
+                    optimizer=optimizer,
+                    epsilon=epsilon,
+                    gamma=GAMMA,
+                    batch_size=BATCH_SIZE,
+                    target_update_freq=TARGET_UPDATE_FREQ
+                )
 
-    analytics: Analytics = initialize_analytics(
-        agent_id=1,
-        n_epochs=N_EPOCHS,
-        n_episodes=N_EPISODES,
-        n_timesteps=N_STEPS,
-        n_envs=1000,
-        plot_freq=PLOT_FREQ,
-        save_freq=SAVE_FREQ,
-        lr=LEARNING_RATE,
-        ep_length=N_STEPS,
-        dim_size=512,
-        action_scale=.1,
-        dist_thresh=.1,
-        debug=False,
-    )
+                analytics: Analytics = initialize_analytics(
+                    agent_id=1,
+                    n_epochs=N_EPOCHS,
+                    n_episodes=N_EPISODES,
+                    n_timesteps=N_STEPS,
+                    n_envs=n_envs,
+                    plot_freq=PLOT_FREQ,
+                    save_freq=SAVE_FREQ,
+                    lr=LEARNING_RATE,
+                    ep_length=N_STEPS,
+                    dim_size=dim,
+                    action_scale=.1,
+                    dist_thresh=.1,
+                    two_layers=two_layers,
+                    debug=False,
+                )
 
-    try:
-        agent.train(
-            env,
-            N_EPOCHS,
-            N_EPISODES,
-            N_STEPS,
-            lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
-        save_analytics(analytics)
-    except KeyboardInterrupt:
-        print("Exitting..")
+                try:
+                    agent.train(
+                        env,
+                        N_EPOCHS,
+                        N_EPISODES,
+                        N_STEPS,
+                        lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+                    save_analytics(analytics)
+                except KeyboardInterrupt:
+                    print("Exitting..")
 
 
 if __name__ == "__main__":
