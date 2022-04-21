@@ -35,7 +35,7 @@ class Env:
         pass
 
     @abstractmethod
-    def reset(self, dones: Optional[torch.Tensor]) -> None:
+    def reset(self) -> None:
         pass
 
     @abstractmethod
@@ -131,14 +131,14 @@ class ApproachBoxEnv(Env):
         h_closest = h_distances.le(0.075).to(self.device)
         h_on_target = h_distances.le(0.045).to(self.device)
 
-        rwds[lf_close * rf_close * h_close, :] = .05
-        rwds[lf_closer * rf_closer * h_closer, :] = 1.
-        rwds[lf_closest * rf_closest * h_closest, :] = 2.5
-        rwds[lf_on_target * rf_on_target * h_on_target, :] = 5.
+        rwds[lf_close * rf_close * h_close, :] = .01
+        rwds[lf_closer * rf_closer * h_closer, :] = .05
+        rwds[lf_closest * rf_closest * h_closest, :] = .5
+        rwds[lf_on_target * rf_on_target * h_on_target, :] = 1.
 
         box_lifted = ((self.box_poses[:, 2] > 0.05) * lf_closer * rf_closer).to(self.device)
         box_z_rwd = torch.zeros_like(rwds).to(self.device)
-        box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(self.box_poses[box_lifted, 2], 0, 1.))) * 100.).to(self.device).unsqueeze(-1)
+        box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(self.box_poses[box_lifted, 2], 0, 1.))) * 10.).to(self.device).unsqueeze(-1)
         rwds[:, :] += box_z_rwd
         return rwds
 

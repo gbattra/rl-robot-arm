@@ -124,7 +124,7 @@ class DQNAgent(Agent):
         gt = 0
         for p in trange(n_epochs, desc="Epoch", leave=False):
             for e in trange(n_episodes, desc="Episode", leave=False):
-                env.reset(None)
+                env.reset()
                 for t in trange(n_steps, desc="Step", leave=False):
                     s = env.compute_observations()
                     a = self.act(s, gt)

@@ -50,7 +50,7 @@ BATCH_SIZE: int = 1000
 DIM_SIZE: int = 500
 
 N_EPOCHS: int = 4
-N_EPISODES: int = 100
+N_EPISODES: int = 500
 N_STEPS: int = 100
 
 PLOT_FREQ: int = 100
@@ -211,21 +211,19 @@ def main():
     agent_id = 1
     for dim_size in dim_sizes:
         for action_scale in action_scales:
-            for i in range(2):
-                two_layers = i > 0
-                run_experiment(
-                    agent_id,
-                    two_layers,
-                    action_scale,
-                    distance_thresholds[0],
-                    dim_size,
-                    0.0001,
-                    200,
-                    sim_config.n_envs,
-                    sim,
-                    gym
-                )
-                agent_id += 1
+            run_experiment(
+                agent_id,
+                True,
+                action_scale,
+                distance_thresholds[0],
+                dim_size,
+                0.0001,
+                200,
+                sim_config.n_envs,
+                sim,
+                gym
+            )
+            agent_id += 1
     destroy_sim(sim, gym)
 
 

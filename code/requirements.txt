@@ -1,3 +1,5 @@
 tqdm
 black
 matplotlib
+git+https://github.com/AI4Finance-LLC/ElegantRL.git
+rl-games

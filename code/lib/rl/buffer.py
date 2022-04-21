@@ -85,7 +85,6 @@ class ReplayBuffer:
 
         self.winning_index += sample_size
         if self.winning_index >= self.size - 1:
-            self.print('winning buffer filled')
             self.winning_index = 0
             self.winning_buffers_filled = True
 

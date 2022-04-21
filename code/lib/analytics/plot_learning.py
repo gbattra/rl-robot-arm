@@ -86,26 +86,26 @@ def plot_learning(
     analytics.epoch_rewards[0, gt] += rewards.sum().item()
     analytics.epoch_episodes[0, gt] += dones.long().sum().item()
 
-    analytics.env_timesteps[dones] = 0
+    # analytics.env_timesteps[dones] = 0
 
-    if timestep % analytics.plot_freq != 0:
-        return
+    # if timestep % analytics.plot_freq != 0:
+    #     return
 
-    plt.figure(1)
-    plt.clf()
+    # plt.figure(1)
+    # plt.clf()
 
-    epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
-    epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
-    plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
-    # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
-    # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
+    # epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
+    # epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
+    # plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    # # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
+    # # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
-    if analytics.debug:
-        plt.pause(0.1)
-        plt.show(block=False)
+    # if analytics.debug:
+    #     plt.pause(0.1)
+    #     plt.show(block=False)
 
-    if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
-        plt.savefig(f'figs/debug/dqn_{time()}.png')
+    # if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
+    #     plt.savefig(f'figs/debug/dqn_{time()}.png')
 
 
 def save_analytics(analytics: Analytics) -> None:
