@@ -23,13 +23,11 @@ class ApproachTaskConfig:
     action_scale: float
     distance_threshold: float
     gripper_offset_z: float
-    max_episode_steps: int
 
 
 @dataclass
 class ApproachTask:
     env_steps: torch.Tensor
-    max_episode_steps: int
     sim: ArmAndBoxSim
     action_scale: float
     observation_size: int

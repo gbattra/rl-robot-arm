@@ -14,7 +14,7 @@ from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.win_buffer import WinBuffer
-from lib.envs.env import ApproachEnv
+from lib.envs.approach_box_env import ApproachEnv
 from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.networks.nn import Dqn
 from lib.structs.arm_and_box_sim import (
@@ -102,8 +102,8 @@ def run_experiment(
         lr=LEARNING_RATE,
         ep_length=N_STEPS,
         dim_size=dim,
-        action_scale=.1,
-        dist_thresh=.1,
+        action_scale=env.action_scale,
+        dist_thresh=env.distance_threshold,
         two_layers=two_layers,
         batch_size=batch_size,
         buffer_type=buffer_type,
@@ -189,20 +189,17 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
+        action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.050
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
 
     agent_id = 0
-    try:
-        for dim in [250, 512]:
-            for batch_size in [250, 500]:
-                for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-                    agent_id += 1
-                    run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, buffer_type)
-    except:
-        print('Exitting...')
+    for dim in [250, 512]:
+        for batch_size in [250, 500]:
+            for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
+                agent_id += 1
+                run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, buffer_type)
 
     env.destroy()
 

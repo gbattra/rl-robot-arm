@@ -174,7 +174,6 @@ class ApproachEnv:
         self.gripper_offset_z = task_config.gripper_offset_z
 
         # task info
-        self.max_episode_steps = task_config.max_episode_steps
         self.action_scale = task_config.action_scale
         self.observation_size = self.arm_n_dofs + 3 + 3
         self.action_size = len(ApproachTaskActions) * self.arm_n_dofs
@@ -189,12 +188,12 @@ class ApproachEnv:
         self.rwd_buf = torch.zeros((self.n_envs, 1)).to(self.device)
         self.dones_buf = torch.zeros((self.n_envs, 1)).to(self.device)
 
-    def reset_done(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.compute_observations(), self.compute_dones()
-
+    
     def reset(self) -> torch.Tensor:
-        reset_envs = torch.arange(self.n_envs).to(self.device)
-
+        reset_envs = torch.arange(self.n_envs, device=self.device)
+        self._reset_dones(reset_envs)
+    
+    def _reset_dones(self, reset_envs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # set default DOF states
         conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs)).to(self.device) * 2.) - 1.
         arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
@@ -253,23 +252,17 @@ class ApproachEnv:
         return self.state_buf
 
     def compute_dones(self) -> torch.Tensor:
-        # distances: torch.Tensor = torch.norm(
-        #     self.left_finger_poses[:, 0:3] - self.box_poses[:, 0:3], p=2, dim=-1
-        # ).to(self.device)
-        # dones: torch.Tensor = distances.le(self.distance_threshold).to(self.device)
-        # return dones.unsqueeze(-1)
-        dones = (self.env_timesteps >= self.max_timestep).to(self.device).unsqueeze(-1)
-        return dones
+        self.dones_buf = compute_dones(self.left_finger_poses, self.box_poses, self.distance_threshold, self.device)
+        # dones = (self.env_timesteps >= self.max_timestep).to(self.device).unsqueeze(-1)
+        # return dones
 
     def compute_rewards(self):
-        self.rwd_buf[:, :] = \
+        self.rwd_buf = \
             compute_rewards(
                     self.left_finger_poses,
                     self.right_finger_poses,
                     self.box_poses,
                     self.hand_poses,
-                    self.env_current_steps,
-                    self.max_episode_steps,
                     self.n_envs,
                     self.device)
 
@@ -303,6 +296,9 @@ class ApproachEnv:
 
         self.compute_observations()
         self.compute_rewards()
+        self.compute_dones()
+
+        self._reset_dones(torch.arange(self.n_envs, device=self.device)[self.dones_buf[:, 0]])
 
         return self.state_buf, self.rwd_buf, self.dones_buf, {}
 
@@ -322,10 +318,19 @@ class ApproachEnv:
             self.gym.sync_frame_time(self.sim)
 
     def destroy(self) -> None:
-        # self.gym.destroy_viewer(self.viewer)
-        # for env_ptr in self.env_ptrs:
-        #     self.gym.destroy_env(env_ptr)
+        self.gym.destroy_viewer(self.viewer)
+        for env_ptr in self.env_ptrs:
+            self.gym.destroy_env(env_ptr)
         self.gym.destroy_sim(self.sim)
+
+
+@torch.jit.script
+def compute_dones(left_finger_poses, box_poses, distance_threshold: float, device: str):
+    distances: torch.Tensor = torch.norm(
+        left_finger_poses[:, 0:3] - box_poses[:, 0:3], p=2, dim=-1
+    )
+    dones: torch.Tensor = distances.le(distance_threshold)
+    return dones.unsqueeze(-1)
 
 
 @torch.jit.script
@@ -334,45 +339,45 @@ def compute_rewards(
     right_finger_poses,
     box_poses,
     hand_poses,
-    env_timesteps,
-    max_timestep: int,
     n_envs: int,
     device: str
 ):
     lf_distances: torch.Tensor = torch.norm(
         left_finger_poses[:, 0:3] - box_poses[:, 0:3], p=2, dim=-1
     )
-    lf_distances: torch.Tensor = torch.norm(
-        right_finger_poses[:, 0:3] - box_poses[:, 0:3], p=2, dim=-1
-    )
-    h_targets = box_poses.clone()
-    h_targets[:, 2] += .125
-    h_distances: torch.Tensor = torch.norm(
-        hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
-    )
-    rwds: torch.Tensor = torch.ones((n_envs, 1)).to(device) * -0.01
-    lf_close: torch.Tensor = lf_distances.le(0.2)
-    lf_closer = lf_distances.le(0.1)
+    # rf_distances: torch.Tensor = torch.norm(
+    #     right_finger_poses[:, 0:3] - box_poses[:, 0:3], p=2, dim=-1
+    # )
+    # h_targets = box_poses.clone()
+    # h_targets[:, 2] += .125
+    # h_distances: torch.Tensor = torch.norm(
+    #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
+    # )
+    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    # lf_close: torch.Tensor = lf_distances.le(0.2)
+    # lf_closer = lf_distances.le(0.1)
     lf_closest = lf_distances.le(0.05)
-    lf_on_target = lf_distances.le(0.01)
+    # lf_on_target = lf_distances.le(0.01)
 
-    rf_close: torch.Tensor = lf_distances.le(0.2)
-    rf_closer = lf_distances.le(0.1)
-    rf_closest = lf_distances.le(0.05)
-    rf_on_target = lf_distances.le(0.01)
+    # rf_close: torch.Tensor = rf_distances.le(0.2)
+    # rf_closer = rf_distances.le(0.1)
+    # rf_closest = rf_distances.le(0.05)
+    # rf_on_target = rf_distances.le(0.01)
 
-    h_close: torch.Tensor = h_distances.le(0.2)
-    h_closer = h_distances.le(0.1)
-    h_closest = h_distances.le(0.075)
-    h_on_target = h_distances.le(0.045)
+    # h_close: torch.Tensor = h_distances.le(0.2)
+    # h_closer = h_distances.le(0.1)
+    # h_closest = h_distances.le(0.075)
+    # h_on_target = h_distances.le(0.045)
 
-    rwds[lf_close * rf_close * h_close, :] = .1
-    rwds[lf_closer * rf_closer * h_closer, :] = .5
-    rwds[lf_closest * rf_closest * h_closest, :] = 1.
-    rwds[lf_on_target * rf_on_target * h_on_target, :] = 2.
+    # rwds[lf_close * rf_close * h_close, :] = .1
+    # rwds[lf_closer * rf_closer * h_closer, :] = .5
+    # rwds[lf_closest * rf_closest * h_closest, :] = 1.
+    # rwds[lf_on_target * rf_on_target * h_on_target, :] = 2.
 
     # box_lifted = ((box_poses[:, 2] > 0.05) * lf_closer * rf_closer)
     # box_z_rwd = torch.zeros_like(rwds).to(device)
     # box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(box_poses[box_lifted, 2], 0, 1.))) * 10.).unsqueeze(-1)
     # rwds[:, :] += box_z_rwd
+
+    rwds[lf_closest] = 1.
     return rwds

@@ -25,11 +25,11 @@ class WinBuffer(ReplayBuffer):
         self.winning_index = 0
         self.winning_buffers_filled = False
 
-        self.winning_states_buffer = torch.zeros((size, state_size)).to(self.device)
-        self.winning_actions_buffer = torch.zeros((size, action_size)).long().to(self.device)
-        self.winning_next_states_buffer = torch.zeros((size, state_size)).to(self.device)
-        self.winning_rewards_buffer = torch.zeros((size, 1)).to(self.device)
-        self.winning_dones_buffer = torch.zeros((size, 1)).bool().to(self.device)
+        self.winning_states_buffer = torch.zeros((size, state_size), device=self.device)
+        self.winning_actions_buffer = torch.zeros((size, action_size), device=self.device).long()
+        self.winning_next_states_buffer = torch.zeros((size, state_size), device=self.device)
+        self.winning_rewards_buffer = torch.zeros((size, 1), device=self.device)
+        self.winning_dones_buffer = torch.zeros((size, 1), device=self.device).bool()
 
     def add(
             self,
@@ -71,7 +71,7 @@ class WinBuffer(ReplayBuffer):
         if win_batch_size == 0:
             return sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones
         
-        step_idxs = torch.randint(0, max_step_idx, (win_batch_size, 1)).squeeze(-1)
+        step_idxs = torch.randint(0, max_step_idx, (win_batch_size, 1), device=self.device).squeeze(-1)
         winning_states = self.winning_states_buffer[step_idxs]
         winning_actions = self.winning_actions_buffer[step_idxs]
         winning_next_states = self.winning_next_states_buffer[step_idxs]

@@ -33,11 +33,11 @@ class ReplayBuffer:
         self.action_size = action_size
         self.n_envs = n_envs
 
-        self.states_buffer = torch.zeros((size, state_size)).to(self.device)
-        self.actions_buffer = torch.zeros((size, action_size)).long().to(self.device)
-        self.next_states_buffer = torch.zeros((size, state_size)).to(self.device)
-        self.rewards_buffer = torch.zeros((size, 1)).to(self.device)
-        self.dones_buffer = torch.zeros((size, 1)).bool().to(self.device)
+        self.states_buffer = torch.zeros((size, state_size), device=self.device)
+        self.actions_buffer = torch.zeros((size, action_size), device=self.device).long()
+        self.next_states_buffer = torch.zeros((size, state_size), device=self.device)
+        self.rewards_buffer = torch.zeros((size, 1), device=self.device)
+        self.dones_buffer = torch.zeros((size, 1), device=self.device).bool()
 
     def add(self,
             states: torch.Tensor,
