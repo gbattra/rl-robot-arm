@@ -12,7 +12,7 @@ from isaacgym import gymapi
 
 import torch
 
-from lib.cfg.sim import Sim
+from lib.structs.sim import Sim
 
 
 @dataclass

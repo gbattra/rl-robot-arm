@@ -12,9 +12,9 @@ from gym import Env
 from isaacgym import gymapi, gymtorch, torch_utils
 import torch
 import numpy as np
-from lib.cfg.arm_and_box_sim import ArmAndBoxSimConfig, AssetConfig
+from lib.structs.arm_and_box_sim import ArmAndBoxSimConfig, AssetConfig
 
-from lib.approach.task import ApproachTaskActions, ApproachTaskConfig
+from lib.structs.approach_task import ApproachTaskActions, ApproachTaskConfig
 
 from rl_games.common import vecenv
 

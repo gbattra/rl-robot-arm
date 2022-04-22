@@ -13,10 +13,10 @@ import torch
 from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
-from lib.approach.env import ApproachEnv
-from lib.rl.buffer import ReplayBuffer
-from lib.rl.nn import DQN
-from lib.cfg.arm_and_box_sim import (
+from lib.envs.env import ApproachEnv
+from lib.buffers.buffer import ReplayBuffer
+from lib.networks.nn import Dqn
+from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
     AssetConfig,
@@ -25,9 +25,8 @@ from lib.cfg.arm_and_box_sim import (
 )
 
 from torch import nn
-from lib.approach.agent import DQNAgent
-from lib.approach.task import (
-    ApproachTask,
+from lib.agents.dqn_agent import DQNAgent
+from lib.structs.approach_task import (
     ApproachTaskActions,
     ApproachTaskConfig,
 )
@@ -41,11 +40,11 @@ EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 10000
-BATCH_SIZE: int = 1000
+BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
 
-N_EPOCHS: int = 1
-N_EPISODES: int = 2
+N_EPOCHS: int = 5
+N_EPISODES: int = 100
 N_STEPS: int = 200
 
 PLOT_FREQ: int = 100
@@ -66,8 +65,8 @@ def run_experiment(
                 
     env = ApproachEnv(sim_config, task_config, gym)
 
-    policy_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
-    target_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+    target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
@@ -146,7 +145,7 @@ def main():
 
     agent_id = 0
     for dim in [250, 512]:
-        for n_envs in [1000, 2000]:
+        for n_envs in [1000, 4000]:
             for two_layers in [True, False]:
                 agent_id += 1
                 sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
@@ -158,8 +157,12 @@ def main():
                         hand_link="panda_link7",
                         left_finger_link="panda_leftfinger",
                         right_finger_link="panda_rightfinger",
+                        # hand_link='lbr_iiwa_link_7',
+                        # left_finger_link='lbr_iiwa_link_7',
+                        # right_finger_link='lbr_iiwa_link_7',
                         asset_config=AssetConfig(
                             asset_root="assets",
+                            # asset_file='urdf/kuka_iiwa/model.urdf',
                             asset_file="urdf/franka_description/robots/franka_panda.urdf",
                             asset_options=arm_asset_options,
                         ),

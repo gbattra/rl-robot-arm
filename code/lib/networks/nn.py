@@ -9,7 +9,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class DQN(nn.Module):
+class Dqn(nn.Module):
     def __init__(self, obs_size: int, action_size: int, dim_size: int, two_layers: bool) -> None:
         super().__init__()
         if two_layers:

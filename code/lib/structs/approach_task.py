@@ -8,7 +8,7 @@ Task for training arm to approach target position
 from enum import IntEnum
 from dataclasses import dataclass
 
-from lib.cfg.arm_and_box_sim import ArmAndBoxSim
+from lib.structs.arm_and_box_sim import ArmAndBoxSim
 import torch
 
 

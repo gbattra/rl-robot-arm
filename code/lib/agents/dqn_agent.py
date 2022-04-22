@@ -1,56 +1,19 @@
 # Greg Attra
-# 04.17.22
+# 04.22.2022
 
 '''
-Class representing an agent for action selection and learning
+DQN Agent
 '''
 
-from abc import abstractmethod
+
 from typing import Callable, Dict
 
 import torch
 from torch import nn
 from tqdm import trange
-from lib.rl.buffer import ReplayBuffer
-from lib.approach.env import Env
-
-
-class Agent:
-    @abstractmethod
-    def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
-        '''
-        Choose actions based on state
-        '''
-        pass
-
-    @abstractmethod
-    def remember(
-            self,
-            states: torch.Tensor,
-            actions: torch.Tensor,
-            s_primes: torch.Tensor,
-            rwds: torch.Tensor,
-            dones: torch.Tensor) -> None:
-        '''
-        Store a transition in the replay buffer
-        '''
-        pass
-
-    @abstractmethod
-    def optimize(self, timestep: int) -> torch.Tensor:
-        '''
-        Update the DQN based on experience
-        '''
-        pass
-
-    @abstractmethod
-    def train(
-            self,
-            env: Env,
-            n_epochs: int,
-            n_episodes: int,
-            n_steps: int) -> Dict:
-        pass
+from lib.agents.agent import Agent
+from lib.buffers.buffer import ReplayBuffer
+from lib.envs.env import Env
 
 
 class DQNAgent(Agent):
