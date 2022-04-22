@@ -15,7 +15,7 @@ from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.win_buffer import WinBuffer
 from lib.envs.env import ApproachEnv
-from lib.buffers.buffer import ReplayBuffer
+from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.networks.nn import Dqn
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
@@ -43,34 +43,35 @@ REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
+N_ENVS: int = 256
 
-N_EPOCHS: int = 5
+N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 200
+N_STEPS: int = 450
 
 PLOT_FREQ: int = 100
 SAVE_FREQ: int = 99
 
 def run_experiment(
-        sim_config: ArmAndBoxSimConfig,
-        task_config: ApproachTaskConfig,
+        env: ApproachEnv,
         dim: int,
         two_layers: bool,
         agent_id: int,
-        n_envs: int):
-    gym: gymapi.Gym = gymapi.acquire_gym()
+        n_envs: int,
+        batch_size: int,
+        buffer_type: BufferType):
     
     epsilon: Callable[[int], float] = lambda t: max(
         EPS_END, EPS_START * (EPS_DECAY**t)
     )
-                
-    env = ApproachEnv(sim_config, task_config, gym)
 
     policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
     target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
 
-    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
-    # buffer: ReplayBuffer = WinBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
+    if buffer_type == BufferType.STANDARD:
+        buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
+    else:
+        buffer: ReplayBuffer = WinBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
@@ -104,20 +105,19 @@ def run_experiment(
         action_scale=.1,
         dist_thresh=.1,
         two_layers=two_layers,
+        batch_size=batch_size,
+        buffer_type=buffer_type,
         debug=False,
     )
 
-    try:
-        agent.train(
-            env,
-            N_EPOCHS,
-            N_EPISODES,
-            N_STEPS,
-            lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
-        save_analytics(analytics)
-        env.destroy()
-    except KeyboardInterrupt:
-        print("Exitting..")
+    agent.train(
+        env,
+        N_EPOCHS,
+        N_EPISODES,
+        N_STEPS,
+        lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+    save_analytics(analytics)
+
 
 def main():
 
@@ -145,58 +145,66 @@ def main():
     # plane config
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0, 0, 1)
+                
+    gym: gymapi.Gym = gymapi.acquire_gym()
+
+    sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
+        n_envs=N_ENVS,
+        env_spacing=1.5,
+        n_envs_per_row=10,
+        n_actors_per_env=2,
+        arm_config=ArmConfig(
+            hand_link="panda_link7",
+            left_finger_link="panda_leftfinger",
+            right_finger_link="panda_rightfinger",
+            # hand_link='lbr_iiwa_link_7',
+            # left_finger_link='lbr_iiwa_link_7',
+            # right_finger_link='lbr_iiwa_link_7',
+            asset_config=AssetConfig(
+                asset_root="assets",
+                # asset_file='urdf/kuka_iiwa/model.urdf',
+                asset_file="urdf/franka_description/robots/franka_panda.urdf",
+                asset_options=arm_asset_options,
+            ),
+            stiffness=8000,
+            damping=4000,
+            start_pose=gymapi.Transform(),
+        ),
+        box_config=BoxConfig(
+            width=0.075,
+            height=0.075,
+            depth=0.075,
+            friction=0.1,
+            start_pose=gymapi.Transform(p=gymapi.Vec3(0.5, 0.5, 0.5)),
+            asset_options=box_asset_options,
+        ),
+        compute_device=args.compute_device_id,
+        graphics_device=args.graphics_device_id,
+        physics_engine=gymapi.SIM_PHYSX,
+        sim_params=sim_params,
+        plane_params=plane_params,
+        viewer_config=ViewerConfig(
+            headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
+        ),
+    )
+
+    task_config: ApproachTaskConfig = ApproachTaskConfig(
+        action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
+    )
+
+    env = ApproachEnv(sim_config, task_config, gym)
 
     agent_id = 0
-    for dim in [250, 512]:
-        for n_envs in [1000, 4000]:
-            for two_layers in [True, False]:
-                agent_id += 1
-                sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
-                    n_envs=n_envs,
-                    env_spacing=1.5,
-                    n_envs_per_row=10,
-                    n_actors_per_env=2,
-                    arm_config=ArmConfig(
-                        hand_link="panda_link7",
-                        left_finger_link="panda_leftfinger",
-                        right_finger_link="panda_rightfinger",
-                        # hand_link='lbr_iiwa_link_7',
-                        # left_finger_link='lbr_iiwa_link_7',
-                        # right_finger_link='lbr_iiwa_link_7',
-                        asset_config=AssetConfig(
-                            asset_root="assets",
-                            # asset_file='urdf/kuka_iiwa/model.urdf',
-                            asset_file="urdf/franka_description/robots/franka_panda.urdf",
-                            asset_options=arm_asset_options,
-                        ),
-                        stiffness=8000,
-                        damping=4000,
-                        start_pose=gymapi.Transform(),
-                    ),
-                    box_config=BoxConfig(
-                        width=0.075,
-                        height=0.075,
-                        depth=0.075,
-                        friction=0.1,
-                        start_pose=gymapi.Transform(p=gymapi.Vec3(0.5, 0.5, 0.5)),
-                        asset_options=box_asset_options,
-                    ),
-                    compute_device=args.compute_device_id,
-                    graphics_device=args.graphics_device_id,
-                    physics_engine=gymapi.SIM_PHYSX,
-                    sim_params=sim_params,
-                    plane_params=plane_params,
-                    viewer_config=ViewerConfig(
-                        headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
-                    ),
-                )
+    try:
+        for dim in [250, 512]:
+            for batch_size in [250, 500]:
+                for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
+                    agent_id += 1
+                    run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, buffer_type)
+    except:
+        print('Exitting...')
 
-                task_config: ApproachTaskConfig = ApproachTaskConfig(
-                    action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
-                )
-
-                run_experiment(sim_config, task_config, dim, two_layers, agent_id, n_envs)
-
+    env.destroy()
 
 if __name__ == "__main__":
     main()

@@ -5,9 +5,16 @@
 Buffer functions. Some code inspired by https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
 
+from enum import Enum
 from typing import Tuple
 
 import torch
+
+
+class BufferType(Enum):
+    STANDARD = 0
+    WINNING = 1
+    HER = 2
 
 
 class ReplayBuffer:

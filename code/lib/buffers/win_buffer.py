@@ -68,6 +68,9 @@ class WinBuffer(ReplayBuffer):
         sample_batch_size = int(batch_size - win_batch_size)
         sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones = super().sample(sample_batch_size)
 
+        if win_batch_size == 0:
+            return sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones
+        
         step_idxs = torch.randint(0, max_step_idx, (win_batch_size, 1)).squeeze(-1)
         winning_states = self.winning_states_buffer[step_idxs]
         winning_actions = self.winning_actions_buffer[step_idxs]

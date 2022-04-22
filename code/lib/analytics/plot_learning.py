@@ -11,6 +11,8 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+from lib.buffers.buffer import BufferType
+
 
 @dataclass
 class Analytics:
@@ -31,6 +33,8 @@ class Analytics:
     action_scale: float
     dist_thresh: float
     two_layers: bool
+    batch_size: int
+    buffer_type: BufferType
     debug: bool
 
 
@@ -48,6 +52,8 @@ def initialize_analytics(
         action_scale: float,
         dist_thresh: float,
         two_layers: bool,
+        batch_size: int,
+        buffer_type: BufferType,
         debug: bool = False) -> Analytics:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     env_timesteps = torch.zeros((n_envs, 1)).to(device)
@@ -73,6 +79,8 @@ def initialize_analytics(
         dist_thresh=dist_thresh,
         agent_id=agent_id,
         two_layers=two_layers,
+        batch_size=batch_size,
+        buffer_type=buffer_type,
         debug=debug
     )
     return analytics
@@ -91,34 +99,35 @@ def plot_learning(
     analytics.epoch_rewards[0, gt] += rewards.sum().item()
     analytics.epoch_episodes[0, gt] += dones.long().sum().item()
 
-    if timestep % analytics.plot_freq != 0:
+    if timestep % analytics.plot_freq != 0 or not analytics.debug:
         return
+
+    # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
+    # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
     plt.figure(1)
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
-    plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
-    # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
-    # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
-    if analytics.debug:
-        plt.pause(0.1)
-        plt.show(block=False)
+    plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    plt.pause(0.1)
+    plt.show(block=False)
 
     # if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
     #     plt.savefig(f'figs/debug/dqn_{time()}.png')
 
 
 def save_analytics(analytics: Analytics) -> None:
-    plt.figure(figsize=(9, 7))
+    plt.figure(figsize=(9, 8))
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
     desc = f'LR: {analytics.lr} | Dim Size: {analytics.dim_size} | Action Scale: {analytics.action_scale} | Dist. Thresh.: {analytics.dist_thresh} \n'\
-        + f'| Epsd. Length: {analytics.ep_length} | N Envs: {analytics.n_envs} | Two Layers: {analytics.two_layers}'
+        + f'| Epsd. Length: {analytics.ep_length} | N Envs: {analytics.n_envs} | Two Layers: {analytics.two_layers}' \
+        + f' | Batch Size: {analytics.batch_size} | {analytics.buffer_type}'
     plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')
     plt.title(f'DQN Agent {analytics.agent_id}')
