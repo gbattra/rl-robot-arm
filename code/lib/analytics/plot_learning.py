@@ -111,7 +111,8 @@ def plot_learning(
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
 
-    plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    plt.plot(epoch_episodes[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    # plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
     plt.pause(0.1)
     plt.show(block=False)
 

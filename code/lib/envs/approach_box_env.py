@@ -180,22 +180,25 @@ class ApproachEnv:
         self.distance_threshold = task_config.distance_threshold
 
         # task state
-        self.env_current_steps = torch.zeros(self.n_envs).to(self.device)
+        self.env_current_steps = torch.zeros(self.n_envs, device=self.device)
         self.dof_targets = torch.zeros((self.n_envs, self.arm_n_dofs), device=self.device)
         self.init_root = self.root_states.clone()
 
-        self.state_buf = torch.zeros((self.n_envs, self.observation_size)).to(self.device)
-        self.rwd_buf = torch.zeros((self.n_envs, 1)).to(self.device)
-        self.dones_buf = torch.zeros((self.n_envs, 1)).to(self.device)
+        self.state_buf = torch.zeros((self.n_envs, self.observation_size), device=self.device)
+        self.rwd_buf = torch.zeros((self.n_envs, 1), device=self.device)
+        self.dones_buf = torch.zeros((self.n_envs, 1), device=self.device)
 
     
     def reset(self) -> torch.Tensor:
         reset_envs = torch.arange(self.n_envs, device=self.device)
         self._reset_dones(reset_envs)
     
-    def _reset_dones(self, reset_envs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _reset_dones(self, reset_envs: torch.Tensor) -> None:
+        if reset_envs.numel() == 0:
+            return
+        
         # set default DOF states
-        conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs)).to(self.device) * 2.) - 1.
+        conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
         arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
         arm_confs = torch_utils.tensor_clamp(
             arm_confs * (2 * math.pi) * conf_signs,
@@ -206,22 +209,21 @@ class ApproachEnv:
         self.dof_velocities[reset_envs, :] = .0
         self.dof_targets[reset_envs, :] = arm_confs[reset_envs, :]
 
-        rands = torch.rand((self.n_envs, 3)).to(self.device)
-        signs = (torch.randint(0, 2, (self.n_envs, 3)).to(self.device) * 2.) - 1.
-        box_poses = (torch.ones((self.n_envs, 3)).to(self.device) * 0.25 + (rands * 0.5)) * signs
+        rands = torch.rand((self.n_envs, 3), device=self.device)
+        signs = (torch.randint(0, 2, (self.n_envs, 3), device=self.device) * 2.) - 1.
+        box_poses = (torch.ones((self.n_envs, 3), device=self.device) * 0.25 + (rands * 0.5)) * signs
         
         # box_poses[..., 0] = .5
         # box_poses[..., 1] = .5
         # box_poses[..., 2] = .05
         box_poses[..., 2] = torch.abs(box_poses[..., 2])
 
-        root_states = self.init_root.clone().to(self.device)
+        root_states = self.init_root.clone()
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
         
         self.env_current_steps[reset_envs] = 0
 
-        all_actor_indices = torch.arange(2 * self.n_envs, dtype=torch.int32) \
-            .to(self.device).view(self.n_envs, 2)
+        all_actor_indices = torch.arange(2 * self.n_envs, dtype=torch.int32, device=self.device).view(self.n_envs, 2)
         actor_indices = all_actor_indices[reset_envs, 1]
         
         self.gym.set_actor_root_state_tensor_indexed(
@@ -230,8 +232,6 @@ class ApproachEnv:
             gymtorch.unwrap_tensor(actor_indices),
             len(actor_indices))
         self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
-
-        self.compute_observations()
 
     def compute_observations(self) -> torch.Tensor:
         state: torch.Tensor = torch.cat(

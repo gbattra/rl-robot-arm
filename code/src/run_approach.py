@@ -43,7 +43,7 @@ REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 256
+N_ENVS: int = 100
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -107,7 +107,7 @@ def run_experiment(
         two_layers=two_layers,
         batch_size=batch_size,
         buffer_type=buffer_type,
-        debug=False,
+        debug=True,
     )
 
     agent.train(
@@ -121,11 +121,16 @@ def run_experiment(
 
 def main():
 
-    args = gymutil.parse_arguments()
+    custom_parameters = [
+        {"name": "--headless", "type": bool, "default": False}
+    ]
+
+    args = gymutil.parse_arguments(custom_parameters=custom_parameters)
     sim_params: gymapi.SimParams = gymapi.SimParams()
     sim_params.use_gpu_pipeline = True
     sim_params.up_axis = gymapi.UP_AXIS_Z
     sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
+    sim_params.physx.num_threads = args.num_threads
 
     # arm asset configs
     arm_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
@@ -184,12 +189,12 @@ def main():
         sim_params=sim_params,
         plane_params=plane_params,
         viewer_config=ViewerConfig(
-            headless=True, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
+            headless=args.headless, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
         ),
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.050
+        action_scale=0.1, gripper_offset_z=0, distance_threshold=.1
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
