@@ -6,14 +6,13 @@ Class representing an agent for action selection and learning
 '''
 
 from abc import abstractmethod
-from time import time
 from typing import Callable, Dict
 
 import torch
 from torch import nn
 from tqdm import trange
 from lib.rl.buffer import ReplayBuffer
-from lib.tasks.env import Env
+from lib.approach.env import Env
 
 
 class Agent:

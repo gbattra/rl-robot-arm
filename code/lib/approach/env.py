@@ -9,17 +9,15 @@ Approach box environment
 import math
 from typing import Dict, Optional, Tuple
 from gym import Env
-import isaacgym
-from isaacgym import gymapi, gymtorch, gymutil, torch_utils
+from isaacgym import gymapi, gymtorch, torch_utils
 import torch
 import numpy as np
-from lib.sims.arm_and_box_sim import Arm, ArmAndBoxSimConfig, AssetConfig
+from lib.cfg.arm_and_box_sim import ArmAndBoxSimConfig, AssetConfig
 
-from lib.tasks.task import ApproachTask, ApproachTaskActions, ApproachTaskConfig
+from lib.approach.task import ApproachTaskActions, ApproachTaskConfig
 
-from rl_games.common import env_configurations, vecenv
-from rl_games.common.algo_observer import AlgoObserver
-from rl_games.algos_torch import torch_ext
+from rl_games.common import vecenv
+
 
 def load_asset(
     asset_config: AssetConfig, sim: gymapi.Sim, gym: gymapi.Gym
@@ -166,7 +164,8 @@ class ApproachEnv:
             self.box_handles.append(box_handle)
 
         self.viewer: Optional[gymapi.Viewer] = None
-        if not sim_config.viewer_config.headless:
+        self.headless = sim_config.viewer_config.headless
+        if not self.headless:
             self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
             # look at middle of scene
             self.gym.viewer_camera_look_at(
@@ -358,9 +357,10 @@ class ApproachEnv:
         self.gym.fetch_results(self.sim, True)
 
         # render step
-        # self.gym.step_graphics(self.sim)
-        # self.gym.draw_viewer(self.viewer, self.sim, render_collision=False)
-        # self.gym.sync_frame_time(self.sim)
+        if not self.headless:
+            self.gym.step_graphics(self.sim)
+            self.gym.draw_viewer(self.viewer, self.sim, render_collision=False)
+            self.gym.sync_frame_time(self.sim)
 
     def destroy(self) -> None:
         self.gym.destroy_viewer(self.viewer)

@@ -5,9 +5,7 @@
 Buffer functions. Some code inspired by https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
 
-from collections import deque, namedtuple
-import random
-from typing import List, Tuple
+from typing import Tuple
 
 import torch
 

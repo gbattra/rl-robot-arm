@@ -6,44 +6,30 @@ Box Approach env adhering to Elegant RL env for multiprocessing
 '''
 
 
-import isaacgym
 from isaacgym import gymapi, gymutil
 
-from elegantrl.train.config import Arguments
-from elegantrl.agents.AgentDQN import AgentDQN
-from elegantrl.train.run import train_and_evaluate_mp, train_and_evaluate
-from elegantrl.envs.IsaacGym import IsaacVecEnv
-
 import torch
-
-from lib.tasks.approach.env import ApproachEnv
-
 
 from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
+from lib.approach.env import ApproachEnv
 from lib.rl.buffer import ReplayBuffer
 from lib.rl.nn import DQN
-from lib.sims.arm_and_box_sim import (
-    ArmAndBoxSim,
+from lib.cfg.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
     AssetConfig,
     BoxConfig,
     ViewerConfig,
-    destroy_sim,
-    initialize_sim,
 )
 
-from torch import Tensor, nn
-from lib.sims.sim import Sim
-from lib.tasks.agent import DQNAgent
-from lib.tasks.env import ApproachBoxEnv
-from lib.tasks.task import (
+from torch import nn
+from lib.approach.agent import DQNAgent
+from lib.approach.task import (
     ApproachTask,
     ApproachTaskActions,
     ApproachTaskConfig,
-    initialize_approach_task,
 )
 
 GAMMA: float = 0.99
