@@ -55,10 +55,10 @@ EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 10000
-BATCH_SIZE: int = 5
+BATCH_SIZE: int = 1000
 DIM_SIZE: int = 500
 
-N_EPOCHS: int = 3
+N_EPOCHS: int = 5
 N_EPISODES: int = 100
 N_STEPS: int = 200
 
@@ -86,15 +86,18 @@ def main():
     # box assset configs
     box_asset_options: gymapi.AssetOptions = gymapi.AssetOptions()
     box_asset_options.density = 4.0
-
+    box_asset_options.disable_gravity = True
+    box_asset_options.fix_base_link = True
 
     # plane config
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0, 0, 1)
 
+    agent_id = 0
     for dim in [250, 512]:
-        for n_envs in [100, 1000, 4000]:
+        for n_envs in [1000, 2000]:
             for two_layers in [True, False]:
+                agent_id += 1
                 sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
                     n_envs=n_envs,
                     env_spacing=1.5,
@@ -132,7 +135,7 @@ def main():
                 )
 
                 task_config: ApproachTaskConfig = ApproachTaskConfig(
-                    action_scale=0.1, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
+                    action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
                 )
 
                 epsilon: Callable[[int], float] = lambda t: max(
@@ -149,7 +152,7 @@ def main():
                 loss_fn = nn.MSELoss()
 
                 agent: DQNAgent = DQNAgent(
-                    agent_id=1,
+                    agent_id=agent_id,
                     n_dofs=env.arm_n_dofs,
                     n_dof_actions=len(ApproachTaskActions),
                     buffer=buffer,
@@ -164,7 +167,7 @@ def main():
                 )
 
                 analytics: Analytics = initialize_analytics(
-                    agent_id=1,
+                    agent_id=agent_id,
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,
@@ -177,7 +180,7 @@ def main():
                     action_scale=.1,
                     dist_thresh=.1,
                     two_layers=two_layers,
-                    debug=False,
+                    debug=True,
                 )
 
                 try:
