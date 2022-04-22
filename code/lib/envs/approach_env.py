@@ -181,12 +181,13 @@ class ApproachEnv:
 
         # task state
         self.env_current_steps = torch.zeros(self.n_envs, device=self.device)
+        self.episode_length = task_config.episode_length
         self.dof_targets = torch.zeros((self.n_envs, self.arm_n_dofs), device=self.device)
         self.init_root = self.root_states.clone()
 
-        self.state_buf = torch.zeros((self.n_envs, self.observation_size), device=self.device)
-        self.rwd_buf = torch.zeros((self.n_envs, 1), device=self.device)
-        self.dones_buf = torch.zeros((self.n_envs, 1), device=self.device)
+        # self.state_buf = torch.zeros((self.n_envs, self.observation_size), device=self.device)
+        # self.rwd_buf = torch.zeros((self.n_envs, 1), device=self.device)
+        # self.dones_buf = torch.zeros((self.n_envs, 1), device=self.device)
 
     
     def reset(self) -> torch.Tensor:
@@ -201,7 +202,7 @@ class ApproachEnv:
         conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
         arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
         arm_confs = torch_utils.tensor_clamp(
-            arm_confs * (2 * math.pi) * conf_signs,
+            arm_confs, # * (2 * math.pi) * conf_signs,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
@@ -213,10 +214,10 @@ class ApproachEnv:
         signs = (torch.randint(0, 2, (self.n_envs, 3), device=self.device) * 2.) - 1.
         box_poses = (torch.ones((self.n_envs, 3), device=self.device) * 0.25 + (rands * 0.5)) * signs
         
-        # box_poses[..., 0] = .5
-        # box_poses[..., 1] = .5
-        # box_poses[..., 2] = .05
-        box_poses[..., 2] = torch.abs(box_poses[..., 2])
+        box_poses[..., 0] = .5
+        box_poses[..., 1] = .5
+        box_poses[..., 2] = .05
+        # box_poses[..., 2] = torch.abs(box_poses[..., 2])
 
         root_states = self.init_root.clone()
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
@@ -245,27 +246,31 @@ class ApproachEnv:
             axis=1,
         )
 
-        self.state_buf[:,:-6] = self.dof_positions[:, :]
-        self.state_buf[:,-6:-3] = self.hand_poses[:, :3]
-        self.state_buf[:, -3:] = self.box_poses[:, :3]
+        # self.state_buf[:,:-6] = self.dof_positions[:, :]
+        # self.state_buf[:,-6:-3] = self.hand_poses[:, :3]
+        # self.state_buf[:, -3:] = self.box_poses[:, :3]
 
-        return self.state_buf
+        return state
 
     def compute_dones(self) -> torch.Tensor:
-        self.dones_buf = compute_dones(self.left_finger_poses, self.box_poses, self.distance_threshold, self.device)
-        # dones = (self.env_timesteps >= self.max_timestep).to(self.device).unsqueeze(-1)
+        # dones = compute_dones(self.left_finger_poses, self.box_poses, self.distance_threshold, self.device)
+        # # self.dones_buf[:,:] = dones[:, :]
         # return dones
+        dones = (self.env_current_steps >= self.episode_length).to(self.device).unsqueeze(-1)
+        return dones
 
     def compute_rewards(self):
-        self.rwd_buf = \
+        rwds = \
             compute_rewards(
                     self.left_finger_poses,
                     self.right_finger_poses,
                     self.box_poses,
                     self.hand_poses,
+                    self.distance_threshold,
                     self.n_envs,
                     self.device)
-
+        # self.rwd_buf[:, :] = rwds[:, :]
+        return rwds
 
     def step(self, actions: torch.Tensor) \
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
@@ -274,19 +279,19 @@ class ApproachEnv:
         """
         self.env_current_steps += 1
         actions = (actions - 1.0) * self.action_scale
+        
         targets = self.dof_targets + actions
         targets = torch_utils.tensor_clamp(
             targets,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
-
-        self.dof_targets = targets
-
+        self.dof_targets[:, :] = targets[:, :]
         self.gym.set_dof_position_target_tensor(
             self.sim, gymtorch.unwrap_tensor(self.dof_targets)
         )
 
+        # targets = self.dof_positions[:, :] + actions
         # self.dof_positions[:, :] = targets[:,:]
         # self.dof_velocities[:, :] = .0
         # self.dof_targets[:, :] = targets[:, :]
@@ -294,11 +299,11 @@ class ApproachEnv:
 
         self.tick()
 
-        self.compute_observations()
-        self.compute_rewards()
-        self.compute_dones()
+        states = self.compute_observations()
+        rwds = self.compute_rewards()
+        dones = self.compute_dones()
 
-        return self.state_buf, self.rwd_buf, self.dones_buf, {}
+        return states, rwds, dones, {}
 
     def tick(self) -> None:
         self.gym.refresh_rigid_body_state_tensor(self.sim)
@@ -337,6 +342,7 @@ def compute_rewards(
     right_finger_poses,
     box_poses,
     hand_poses,
+    distance_threshold: float,
     n_envs: int,
     device: str
 ):
@@ -351,10 +357,10 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
-    lf_closest = lf_distances.le(0.05)
+    # lf_closest = lf_distances.le(distance_threshold)
     # lf_on_target = lf_distances.le(0.01)
 
     # rf_close: torch.Tensor = rf_distances.le(0.2)
@@ -377,5 +383,5 @@ def compute_rewards(
     # box_z_rwd[box_lifted, :] = ((1. - (1. - torch.clamp(box_poses[box_lifted, 2], 0, 1.))) * 10.).unsqueeze(-1)
     # rwds[:, :] += box_z_rwd
 
-    rwds[lf_closest] = 1.
+    rwds[lf_distances.le(distance_threshold), :] = 1.
     return rwds

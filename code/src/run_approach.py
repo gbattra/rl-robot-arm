@@ -14,7 +14,7 @@ from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.win_buffer import WinBuffer
-from lib.envs.approach_box_env import ApproachEnv
+from lib.envs.approach_env import ApproachEnv
 from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.networks.nn import Dqn
 from lib.structs.arm_and_box_sim import (
@@ -40,14 +40,14 @@ EPS_END: float = 0.05
 EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 1000000
-TARGET_UPDATE_FREQ: int = 10000
+TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 256
+N_ENVS: int = 1000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 450
+N_STEPS: int = 100
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -67,8 +67,8 @@ def run_experiment(
         EPS_END, EPS_START * (EPS_DECAY**t)
     )
 
-    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
-    target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, False).to(env.device)
+    target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, False).to(env.device)
 
     if buffer_type == BufferType.STANDARD:
         buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
@@ -197,16 +197,16 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.025, gripper_offset_z=0, distance_threshold=0.05
+        action_scale=0.1, gripper_offset_z=0, distance_threshold=0.2, episode_length=N_STEPS
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
 
     agent_id = 0
-    for dim in [250, 512]:
-        for batch_size in [250, 500]:
-            for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-                for lr in [0.001, 0.0001]:
+    for dim in [256, 512]:
+        for batch_size in [512, 1024]:
+            for lr in [0.0001, 0.001]:
+                for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
                     agent_id += 1
                     run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
 

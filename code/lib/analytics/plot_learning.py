@@ -111,15 +111,15 @@ def plot_learning(
 
     if not cur_step % analytics.plot_freq == 0:
         return
-        
+    return
     plt.figure(1)
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
 
-    plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
-    # plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    # plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    plt.plot(epoch_rewards[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
     plt.pause(0.1)
     plt.show(block=False)
 

@@ -23,6 +23,7 @@ class ApproachTaskConfig:
     action_scale: float
     distance_threshold: float
     gripper_offset_z: float
+    episode_length: int
 
 
 @dataclass
@@ -35,3 +36,4 @@ class ApproachTask:
     dof_targets: torch.Tensor
     distance_threshold: float
     gripper_offest_z: float
+    episode_length: int

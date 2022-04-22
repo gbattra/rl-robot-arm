@@ -61,16 +61,16 @@ class WinBuffer(ReplayBuffer):
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         max_step_idx = self.size if self.winning_buffers_filled else self.winning_index
 
-        win_batch_size = int(batch_size * self.pct_winning)
+        win_batch_size = batch_size * self.pct_winning
         if win_batch_size > self.winning_index and not self.winning_buffers_filled:
             win_batch_size = self.winning_index
 
-        sample_batch_size = int(batch_size - win_batch_size)
+        sample_batch_size = (batch_size - win_batch_size)
         sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones = super().sample(sample_batch_size)
 
         if win_batch_size == 0:
             return sample_states, sample_actions, sample_next_states, sample_rwds, sample_dones
-        
+
         step_idxs = torch.randint(0, max_step_idx, (win_batch_size, 1), device=self.device).squeeze(-1)
         winning_states = self.winning_states_buffer[step_idxs]
         winning_actions = self.winning_actions_buffer[step_idxs]
