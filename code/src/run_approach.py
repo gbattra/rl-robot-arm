@@ -13,6 +13,7 @@ import torch
 from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
+from lib.buffers.win_buffer import WinBuffer
 from lib.envs.env import ApproachEnv
 from lib.buffers.buffer import ReplayBuffer
 from lib.networks.nn import Dqn
@@ -38,7 +39,7 @@ EPS_START: float = 1.0
 EPS_END: float = 0.05
 EPS_DECAY: float = 0.9999
 
-REPLAY_BUFFER_SIZE: int = 10000000
+REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
@@ -67,7 +68,9 @@ def run_experiment(
 
     policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
     target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+
     buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
+    # buffer: ReplayBuffer = WinBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     loss_fn = nn.MSELoss()
@@ -101,7 +104,7 @@ def run_experiment(
         action_scale=.1,
         dist_thresh=.1,
         two_layers=two_layers,
-        debug=True,
+        debug=False,
     )
 
     try:

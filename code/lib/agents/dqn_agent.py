@@ -103,27 +103,15 @@ class DQNAgent(Agent):
                     gt += 1
             torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}.pth')
 
-    def optimize(self, timestep: int) -> torch.Tensor:
+    def optimize(self, timestep: int) -> float:
         n_joint_actions = self.n_dof_actions
         n_joints = self.n_dofs
 
-        batch_size = self.batch_size \
-            if self.buffer.sample_index >= self.batch_size or self.buffer.sample_buffers_filled \
-            else self.buffer.sample_index
-        samples = self.buffer.sample(batch_size)
+        if self.buffer.sample_index < self.batch_size and not self.buffer.sample_buffers_filled:
+            return 0
 
+        samples = self.buffer.sample(self.batch_size)
         states, actions, next_states, rewards, dones = samples
-
-        # if not self.her:
-        # if self.buffer.winning_index > batch_size or self.buffer.winning_buffers_filled:
-        #     winning_samples = self.buffer.sample(batch_size, winning=True)
-        #     winning_states, winning_actions, winning_next_states, winning_rewards, winning_dones = winning_samples
-
-        #     states = torch.vstack([states, winning_states])
-        #     next_states = torch.vstack([next_states, winning_next_states])
-        #     actions = torch.vstack([actions, winning_actions])
-        #     rewards = torch.vstack([rewards, winning_rewards])
-        #     dones = torch.vstack([dones, winning_dones])
 
         # if self.her:
         #     # set all state rewards to 0 and dones to False
