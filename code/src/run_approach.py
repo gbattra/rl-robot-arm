@@ -200,9 +200,6 @@ def main():
         ),
     )
 
-    gym: gymapi.Gym = gymapi.acquire_gym()
-    sim: ArmAndBoxSim = initialize_sim(sim_config, gym)
-
     learning_rates = [0.001, 0.0001]
     dim_sizes = [250, 500, 1000]
     action_scales = [0.1, 0.05, 0.025]

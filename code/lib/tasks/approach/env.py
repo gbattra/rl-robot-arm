@@ -72,10 +72,10 @@ class ApproachEnv:
     def __init__(
             self,
             sim_config: ArmAndBoxSimConfig,
-            task_config: ApproachTaskConfig) -> None:
+            task_config: ApproachTaskConfig,
+            gym: gymapi.Gym) -> None:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-        self.gym: gymapi.Gym = gymapi.acquire_gym()
+        self.gym = gym
         self.sim: gymapi.Sim = self.gym.create_sim(
             sim_config.compute_device,
             sim_config.graphics_device,
@@ -358,9 +358,9 @@ class ApproachEnv:
         self.gym.fetch_results(self.sim, True)
 
         # render step
-        self.gym.step_graphics(self.sim)
-        self.gym.draw_viewer(self.viewer, self.sim, render_collision=False)
-        self.gym.sync_frame_time(self.sim)
+        # self.gym.step_graphics(self.sim)
+        # self.gym.draw_viewer(self.viewer, self.sim, render_collision=False)
+        # self.gym.sync_frame_time(self.sim)
 
     def destroy(self) -> None:
         self.gym.destroy_viewer(self.viewer)

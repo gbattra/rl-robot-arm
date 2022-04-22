@@ -58,13 +58,78 @@ TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 1000
 DIM_SIZE: int = 500
 
-N_EPOCHS: int = 5
-N_EPISODES: int = 100
+N_EPOCHS: int = 1
+N_EPISODES: int = 2
 N_STEPS: int = 200
 
 PLOT_FREQ: int = 100
 SAVE_FREQ: int = 99
 
+def run_experiment(
+        sim_config: ArmAndBoxSimConfig,
+        task_config: ApproachTaskConfig,
+        dim: int,
+        two_layers: bool,
+        agent_id: int,
+        n_envs: int):
+    gym: gymapi.Gym = gymapi.acquire_gym()
+    
+    epsilon: Callable[[int], float] = lambda t: max(
+        EPS_END, EPS_START * (EPS_DECAY**t)
+    )
+                
+    env = ApproachEnv(sim_config, task_config, gym)
+
+    policy_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+    target_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
+    buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
+
+    optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
+    loss_fn = nn.MSELoss()
+
+    agent: DQNAgent = DQNAgent(
+        agent_id=agent_id,
+        n_dofs=env.arm_n_dofs,
+        n_dof_actions=len(ApproachTaskActions),
+        buffer=buffer,
+        policy_net=policy_net,
+        target_net=target_net,
+        loss_fn=loss_fn,
+        optimizer=optimizer,
+        epsilon=epsilon,
+        gamma=GAMMA,
+        batch_size=BATCH_SIZE,
+        target_update_freq=TARGET_UPDATE_FREQ
+    )
+
+    analytics: Analytics = initialize_analytics(
+        agent_id=agent_id,
+        n_epochs=N_EPOCHS,
+        n_episodes=N_EPISODES,
+        n_timesteps=N_STEPS,
+        n_envs=n_envs,
+        plot_freq=PLOT_FREQ,
+        save_freq=SAVE_FREQ,
+        lr=LEARNING_RATE,
+        ep_length=N_STEPS,
+        dim_size=dim,
+        action_scale=.1,
+        dist_thresh=.1,
+        two_layers=two_layers,
+        debug=True,
+    )
+
+    try:
+        agent.train(
+            env,
+            N_EPOCHS,
+            N_EPISODES,
+            N_STEPS,
+            lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+        save_analytics(analytics)
+        env.destroy()
+    except KeyboardInterrupt:
+        print("Exitting..")
 
 def main():
 
@@ -138,61 +203,7 @@ def main():
                     action_scale=0.05, gripper_offset_z=0.1, distance_threshold=0.1, max_episode_steps=200
                 )
 
-                epsilon: Callable[[int], float] = lambda t: max(
-                    EPS_END, EPS_START * (EPS_DECAY**t)
-                )
-                
-                env = ApproachEnv(sim_config, task_config)
-
-                policy_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
-                target_net: nn.Module = DQN(env.observation_size, env.action_size, dim, two_layers).to(env.device)
-                buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
-
-                optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
-                loss_fn = nn.MSELoss()
-
-                agent: DQNAgent = DQNAgent(
-                    agent_id=agent_id,
-                    n_dofs=env.arm_n_dofs,
-                    n_dof_actions=len(ApproachTaskActions),
-                    buffer=buffer,
-                    policy_net=policy_net,
-                    target_net=target_net,
-                    loss_fn=loss_fn,
-                    optimizer=optimizer,
-                    epsilon=epsilon,
-                    gamma=GAMMA,
-                    batch_size=BATCH_SIZE,
-                    target_update_freq=TARGET_UPDATE_FREQ
-                )
-
-                analytics: Analytics = initialize_analytics(
-                    agent_id=agent_id,
-                    n_epochs=N_EPOCHS,
-                    n_episodes=N_EPISODES,
-                    n_timesteps=N_STEPS,
-                    n_envs=n_envs,
-                    plot_freq=PLOT_FREQ,
-                    save_freq=SAVE_FREQ,
-                    lr=LEARNING_RATE,
-                    ep_length=N_STEPS,
-                    dim_size=dim,
-                    action_scale=.1,
-                    dist_thresh=.1,
-                    two_layers=two_layers,
-                    debug=True,
-                )
-
-                try:
-                    agent.train(
-                        env,
-                        N_EPOCHS,
-                        N_EPISODES,
-                        N_STEPS,
-                        lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
-                    save_analytics(analytics)
-                except KeyboardInterrupt:
-                    print("Exitting..")
+                run_experiment(sim_config, task_config, dim, two_layers, agent_id, n_envs)
 
 
 if __name__ == "__main__":

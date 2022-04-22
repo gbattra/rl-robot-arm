@@ -139,7 +139,7 @@ class DQNAgent(Agent):
                     # env.reset(done)
 
                     gt += 1
-            torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}_{time()}.pth')
+            torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}.pth')
 
     def optimize(self, timestep: int) -> torch.Tensor:
         n_joint_actions = self.n_dof_actions
