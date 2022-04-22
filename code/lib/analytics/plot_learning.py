@@ -94,33 +94,40 @@ def plot_learning(
         epoch: int,
         episode: int,
         timestep: int) -> None:
-    gt = (epoch * analytics.n_episodes) + episode
+    cur_ep = (epoch * analytics.n_episodes) + episode
+    cur_step = (cur_ep * analytics.n_timesteps) + timestep
     analytics.env_timesteps[:] += 1
-    analytics.epoch_rewards[0, gt] += rewards.sum().item()
-    analytics.epoch_episodes[0, gt] += dones.long().sum().item()
+    analytics.epoch_rewards[0, cur_ep] += rewards.sum().item()
+    analytics.epoch_episodes[0, cur_ep] += dones.long().sum().item()
 
-    if timestep % analytics.plot_freq != 0 or not analytics.debug:
+    if not analytics.debug:
         return
+
+    if cur_ep > 1 and cur_step % analytics.save_freq == 0:
+        save_analytics(analytics, 'debug')
 
     # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
+    if not cur_step % analytics.plot_freq == 0:
+        return
+        
     plt.figure(1)
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
     epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
 
-    plt.plot(epoch_episodes[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
     # plt.plot(epoch_rewards[0, :gt] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
     plt.pause(0.1)
     plt.show(block=False)
 
-    # if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
-    #     plt.savefig(f'figs/debug/dqn_{time()}.png')
+    if episode == analytics.n_episodes - 1 and timestep == analytics.n_timesteps - 1:
+        plt.savefig(f'figs/debug/dqn_{time()}.png')
 
 
-def save_analytics(analytics: Analytics) -> None:
+def save_analytics(analytics: Analytics, root: str) -> None:
     plt.figure(figsize=(9, 8))
     plt.clf()
 
@@ -135,4 +142,4 @@ def save_analytics(analytics: Analytics) -> None:
 
     plt.legend()
 
-    plt.savefig(f'figs/results/DQN_{analytics.agent_id}_{time()}.png')
+    plt.savefig(f'figs/{root}/DQN_{analytics.agent_id}_{time()}.png')

@@ -298,8 +298,6 @@ class ApproachEnv:
         self.compute_rewards()
         self.compute_dones()
 
-        self._reset_dones(torch.arange(self.n_envs, device=self.device)[self.dones_buf[:, 0]])
-
         return self.state_buf, self.rwd_buf, self.dones_buf, {}
 
     def tick(self) -> None:

@@ -43,14 +43,14 @@ REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10000
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 100
+N_ENVS: int = 256
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
 N_STEPS: int = 450
 
-PLOT_FREQ: int = 100
-SAVE_FREQ: int = 99
+PLOT_FREQ: int = N_STEPS
+SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
         env: ApproachEnv,
@@ -59,6 +59,8 @@ def run_experiment(
         agent_id: int,
         n_envs: int,
         batch_size: int,
+        debug: bool,
+        lr: float,
         buffer_type: BufferType):
     
     epsilon: Callable[[int], float] = lambda t: max(
@@ -73,7 +75,7 @@ def run_experiment(
     else:
         buffer: ReplayBuffer = WinBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
-    optimizer = torch.optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(policy_net.parameters(), lr=lr)
     loss_fn = nn.MSELoss()
 
     agent: DQNAgent = DQNAgent(
@@ -107,7 +109,7 @@ def run_experiment(
         two_layers=two_layers,
         batch_size=batch_size,
         buffer_type=buffer_type,
-        debug=True,
+        debug=debug,
     )
 
     agent.train(
@@ -116,13 +118,14 @@ def run_experiment(
         N_EPISODES,
         N_STEPS,
         lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
-    save_analytics(analytics)
+    save_analytics(analytics, 'results')
 
 
 def main():
 
     custom_parameters = [
-        {"name": "--headless", "type": bool, "default": False}
+        {"name": "--headless", "type": bool, "default": False},
+        {"name": "--debug", "type": bool, "default": False}
     ]
 
     args = gymutil.parse_arguments(custom_parameters=custom_parameters)
@@ -194,7 +197,7 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, gripper_offset_z=0, distance_threshold=.1
+        action_scale=0.025, gripper_offset_z=0, distance_threshold=0.05
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
@@ -203,8 +206,9 @@ def main():
     for dim in [250, 512]:
         for batch_size in [250, 500]:
             for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-                agent_id += 1
-                run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, buffer_type)
+                for lr in [0.001, 0.0001]:
+                    agent_id += 1
+                    run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
 
     env.destroy()
 
