@@ -41,6 +41,7 @@ class ApproachEnv:
         )
 
         self.n_envs = sim_config.n_envs
+        self.randomize = task_config.randomize
 
         self.gym.add_ground(self.sim, sim_config.plane_params)
 
@@ -199,25 +200,29 @@ class ApproachEnv:
             return
         
         # set default DOF states
-        conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
-        arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
-        arm_confs = torch_utils.tensor_clamp(
-            arm_confs, # * (2 * math.pi) * conf_signs,
-            self.arm_lower_limits,
-            self.arm_upper_limits,
-        )
+        if self.randomize:
+            conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
+            arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
+            arm_confs = torch_utils.tensor_clamp(
+                arm_confs if not self.randomize else arm_confs * (2 * math.pi) * conf_signs,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+
+            rands = torch.rand((self.n_envs, 3), device=self.device)
+            signs = (torch.randint(0, 2, (self.n_envs, 3), device=self.device) * 2.) - 1.
+            box_poses = (torch.ones((self.n_envs, 3), device=self.device) * 0.25 + (rands * 0.5)) * signs
+            box_poses[..., 2] = torch.abs(box_poses[..., 2])
+        else:
+            arm_confs: torch.Tensor = torch.zeros((self.n_envs, self.arm_n_dofs), device=self.device)
+            box_poses = torch.ones((self.n_envs, 3), device=self.device)
+            box_poses[..., 0] = .5
+            box_poses[..., 1] = .5
+            box_poses[..., 2] = .05
+
         self.dof_positions[reset_envs, :] = arm_confs[reset_envs, :]
         self.dof_velocities[reset_envs, :] = .0
         self.dof_targets[reset_envs, :] = arm_confs[reset_envs, :]
-
-        rands = torch.rand((self.n_envs, 3), device=self.device)
-        signs = (torch.randint(0, 2, (self.n_envs, 3), device=self.device) * 2.) - 1.
-        box_poses = (torch.ones((self.n_envs, 3), device=self.device) * 0.25 + (rands * 0.5)) * signs
-        
-        box_poses[..., 0] = .5
-        box_poses[..., 1] = .5
-        box_poses[..., 2] = .05
-        # box_poses[..., 2] = torch.abs(box_poses[..., 2])
 
         root_states = self.init_root.clone()
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
@@ -357,7 +362,8 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    # rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)\
+    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
     # lf_closest = lf_distances.le(distance_threshold)

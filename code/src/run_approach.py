@@ -7,6 +7,7 @@ Box Approach env adhering to Elegant RL env for multiprocessing
 
 
 import math
+from cv2 import exp
 from isaacgym import gymapi, gymutil
 
 import torch
@@ -32,6 +33,7 @@ from lib.structs.approach_task import (
     ApproachTaskActions,
     ApproachTaskConfig,
 )
+from lib.structs.experiment import Experiment
 
 GAMMA: float = 0.99
 LEARNING_RATE: float = 0.001
@@ -40,7 +42,7 @@ EPS_START: float = 1.0
 EPS_END: float = 0.05
 EPS_DECAY: float = 0.999
 
-REPLAY_BUFFER_SIZE: int = 1000000
+REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
@@ -48,39 +50,37 @@ N_ENVS: int = 100
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 100
+N_STEPS: int = 450
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
         env: ApproachEnv,
-        dim: int,
-        two_layers: bool,
-        agent_id: int,
-        n_envs: int,
-        batch_size: int,
-        debug: bool,
-        lr: float,
-        buffer_type: BufferType):
+        experiment: Experiment,
+        debug: bool):
+
+    env.randomize = experiment.randomize
+    env.action_scale = experiment.action_scale
+    env.distance_threshold = experiment.dist_thresh
     
     epsilon: Callable[[int], float] = lambda t: max(
-        EPS_END, EPS_START * (EPS_DECAY**t)
+        EPS_END, EPS_START * (experiment.eps_decay**t)
     )
 
-    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, False).to(env.device)
-    target_net: nn.Module = Dqn(env.observation_size, env.action_size, dim, False).to(env.device)
+    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size, experiment.two_layers).to(env.device)
+    target_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size, experiment.two_layers).to(env.device)
 
-    if buffer_type == BufferType.STANDARD:
-        buffer: ReplayBuffer = ReplayBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs)
+    if experiment.buffer_type == BufferType.STANDARD:
+        buffer: ReplayBuffer = ReplayBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs)
     else:
-        buffer: ReplayBuffer = WinBuffer(REPLAY_BUFFER_SIZE, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
+        buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
-    optimizer = torch.optim.Adam(policy_net.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(policy_net.parameters(), lr=experiment.lr)
     loss_fn = nn.MSELoss()
 
     agent: DQNAgent = DQNAgent(
-        agent_id=agent_id,
+        agent_id=experiment.agent_id,
         n_dofs=env.arm_n_dofs,
         n_dof_actions=len(ApproachTaskActions),
         buffer=buffer,
@@ -89,35 +89,23 @@ def run_experiment(
         loss_fn=loss_fn,
         optimizer=optimizer,
         epsilon=epsilon,
-        gamma=GAMMA,
-        batch_size=BATCH_SIZE,
-        target_update_freq=TARGET_UPDATE_FREQ
+        gamma=experiment.gamma,
+        batch_size=experiment.batch_size,
+        target_update_freq=experiment.target_update_freq
     )
 
     analytics: Analytics = initialize_analytics(
-        agent_id=agent_id,
-        n_epochs=N_EPOCHS,
-        n_episodes=N_EPISODES,
-        n_timesteps=N_STEPS,
-        n_envs=n_envs,
+        experiment=experiment,
         plot_freq=PLOT_FREQ,
         save_freq=SAVE_FREQ,
-        lr=lr,
-        ep_length=N_STEPS,
-        dim_size=dim,
-        action_scale=env.action_scale,
-        dist_thresh=env.distance_threshold,
-        two_layers=two_layers,
-        batch_size=batch_size,
-        buffer_type=buffer_type,
-        debug=debug,
+        debug=debug
     )
 
     agent.train(
         env,
-        N_EPOCHS,
-        N_EPISODES,
-        N_STEPS,
+        experiment.n_epochs,
+        experiment.n_episodes,
+        experiment.n_timesteps,
         lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
     save_analytics(analytics, 'results')
 
@@ -166,12 +154,8 @@ def main():
             hand_link="panda_link7",
             left_finger_link="panda_leftfinger",
             right_finger_link="panda_rightfinger",
-            # hand_link='lbr_iiwa_link_7',
-            # left_finger_link='lbr_iiwa_link_7',
-            # right_finger_link='lbr_iiwa_link_7',
             asset_config=AssetConfig(
                 asset_root="assets",
-                # asset_file='urdf/kuka_iiwa/model.urdf',
                 asset_file="urdf/franka_description/robots/franka_panda.urdf",
                 asset_options=arm_asset_options,
             ),
@@ -197,35 +181,51 @@ def main():
         ),
     )
 
+    action_scale = 0.1
+    dist_thresh = 0.25
+
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, gripper_offset_z=0, distance_threshold=0.25, episode_length=N_STEPS
+        action_scale=action_scale,
+        gripper_offset_z=0,
+        distance_threshold=0.25,
+        episode_length=N_STEPS,
+        randomize=False
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
 
     agent_id = 0
-    # for dim in [256, 512]:
-    #     for batch_size in [1024]:
-    #         for lr in [0.001]:
-    #             for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-    #                 for two_layers in [True, False]:
-    #                     agent_id += 1
-    #                     run_experiment(env, dim, two_layers, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
     dim = 64
     two_layers = True
-    batch_size = 64**2
-    lr = 0.001
+    batch_size = N_ENVS
     buffer_type = BufferType.WINNING
-    run_experiment(
-        env=env,
-        dim=dim,
-        two_layers=two_layers,
-        agent_id=agent_id,
-        n_envs=N_ENVS,
-        batch_size=batch_size,
-        debug=args.debug,
-        lr=lr,
-        buffer_type=buffer_type)
+    for lr in [0.001, 0.0001]:
+        for eps_decay in [0.999, 0.9999]:
+            for randomize in [False, True]:
+                experiment = Experiment(
+                    n_epochs=N_EPOCHS,
+                    n_episodes=N_EPISODES,
+                    n_timesteps=N_STEPS,
+                    dim_size=dim,
+                    two_layers=two_layers,
+                    agent_id=agent_id,
+                    n_envs=N_ENVS,
+                    batch_size=batch_size,
+                    lr=lr,
+                    buffer_type=buffer_type,
+                    eps_decay=eps_decay,
+                    randomize=randomize,
+                    gamma=GAMMA,
+                    action_scale=action_scale,
+                    dist_thresh=dist_thresh,
+                    target_update_freq=TARGET_UPDATE_FREQ,
+                    replay_buffer_size=REPLAY_BUFFER_SIZE
+                )
+                run_experiment(
+                    env=env,
+                    experiment=experiment,
+                    debug=args.debug)
+                agent_id += 1
 
     env.destroy()
 

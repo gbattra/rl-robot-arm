@@ -24,6 +24,7 @@ class ApproachTaskConfig:
     distance_threshold: float
     gripper_offset_z: float
     episode_length: int
+    randomize: bool
 
 
 @dataclass
@@ -37,3 +38,4 @@ class ApproachTask:
     distance_threshold: float
     gripper_offest_z: float
     episode_length: int
+    randomize: bool
