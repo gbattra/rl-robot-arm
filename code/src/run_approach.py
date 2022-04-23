@@ -30,6 +30,7 @@ from lib.structs.arm_and_box_sim import (
 from torch import nn
 from lib.agents.dqn_agent import DQNAgent
 from lib.structs.approach_task import (
+    ActionMode,
     ApproachTaskActions,
     ApproachTaskConfig,
 )
@@ -43,14 +44,14 @@ EPS_END: float = 0.05
 EPS_DECAY: float = 0.999
 
 REPLAY_BUFFER_SIZE: int = 10000000
-TARGET_UPDATE_FREQ: int = 100
+TARGET_UPDATE_FREQ: int = 10
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 100
+N_ENVS: int = 1000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 450
+N_STEPS: int = 200
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -63,6 +64,7 @@ def run_experiment(
     env.randomize = experiment.randomize
     env.action_scale = experiment.action_scale
     env.distance_threshold = experiment.dist_thresh
+    env.action_mode = experiment.action_mode
     
     epsilon: Callable[[int], float] = lambda t: max(
         EPS_END, EPS_START * (experiment.eps_decay**t)
@@ -189,7 +191,8 @@ def main():
         gripper_offset_z=0,
         distance_threshold=0.25,
         episode_length=N_STEPS,
-        randomize=False
+        randomize=False,
+        action_mode=ActionMode.DOF_TARGET
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
@@ -199,8 +202,8 @@ def main():
     two_layers = True
     batch_size = N_ENVS
     buffer_type = BufferType.WINNING
-    for lr in [0.001, 0.0001]:
-        for eps_decay in [0.999, 0.9999]:
+    for lr in [0.0001, 0.001]:
+        for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
             for randomize in [False, True]:
                 experiment = Experiment(
                     n_epochs=N_EPOCHS,
@@ -213,13 +216,14 @@ def main():
                     batch_size=batch_size,
                     lr=lr,
                     buffer_type=buffer_type,
-                    eps_decay=eps_decay,
+                    eps_decay=EPS_DECAY,
                     randomize=randomize,
                     gamma=GAMMA,
                     action_scale=action_scale,
                     dist_thresh=dist_thresh,
                     target_update_freq=TARGET_UPDATE_FREQ,
-                    replay_buffer_size=REPLAY_BUFFER_SIZE
+                    replay_buffer_size=REPLAY_BUFFER_SIZE,
+                    action_mode=action_mode
                 )
                 run_experiment(
                     env=env,

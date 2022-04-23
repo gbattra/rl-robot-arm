@@ -77,7 +77,7 @@ def plot_learning(
     if not cur_step % analytics.plot_freq == 0:
         return
     
-    plt.figure(1, figsize=(9, 8))
+    plt.figure(1, figsize=(9, 10))
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
@@ -101,7 +101,7 @@ def plot_learning(
 
 
 def save_analytics(analytics: Analytics, root: str) -> None:
-    plt.figure(2, figsize=(9, 8))
+    plt.figure(2, figsize=(9, 10))
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()

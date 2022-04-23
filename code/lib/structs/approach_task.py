@@ -5,7 +5,7 @@
 Task for training arm to approach target position
 """
 
-from enum import IntEnum
+from enum import Enum, IntEnum
 from dataclasses import dataclass
 
 from lib.structs.arm_and_box_sim import ArmAndBoxSim
@@ -18,6 +18,11 @@ class ApproachTaskActions(IntEnum):
     FWD = 1.0
 
 
+class ActionMode(Enum):
+    DOF_TARGET = 0
+    DOF_POSITION = 1
+
+
 @dataclass
 class ApproachTaskConfig:
     action_scale: float
@@ -25,6 +30,7 @@ class ApproachTaskConfig:
     gripper_offset_z: float
     episode_length: int
     randomize: bool
+    action_mode: ActionMode
 
 
 @dataclass

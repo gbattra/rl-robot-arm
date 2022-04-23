@@ -2,6 +2,7 @@
 # 04.22.2022
 
 
+from enum import Enum
 import math
 from typing import Dict, Optional, Tuple
 from isaacgym import gymapi, gymtorch, torch_utils
@@ -9,7 +10,7 @@ import torch
 import numpy as np
 from lib.structs.arm_and_box_sim import ArmAndBoxSimConfig, AssetConfig
 
-from lib.structs.approach_task import ApproachTaskActions, ApproachTaskConfig
+from lib.structs.approach_task import ActionMode, ApproachTaskActions, ApproachTaskConfig
 
 
 def load_asset(
@@ -42,6 +43,7 @@ class ApproachEnv:
 
         self.n_envs = sim_config.n_envs
         self.randomize = task_config.randomize
+        self.action_mode = task_config.action_mode
 
         self.gym.add_ground(self.sim, sim_config.plane_params)
 
@@ -186,10 +188,6 @@ class ApproachEnv:
         self.dof_targets = torch.zeros((self.n_envs, self.arm_n_dofs), device=self.device)
         self.init_root = self.root_states.clone()
 
-        # self.state_buf = torch.zeros((self.n_envs, self.observation_size), device=self.device)
-        # self.rwd_buf = torch.zeros((self.n_envs, 1), device=self.device)
-        # self.dones_buf = torch.zeros((self.n_envs, 1), device=self.device)
-
     
     def reset(self) -> torch.Tensor:
         reset_envs = torch.arange(self.n_envs, device=self.device)
@@ -251,10 +249,6 @@ class ApproachEnv:
             axis=1,
         )
 
-        # self.state_buf[:,:-6] = self.dof_positions[:, :]
-        # self.state_buf[:,-6:-3] = self.hand_poses[:, :3]
-        # self.state_buf[:, -3:] = self.box_poses[:, :3]
-
         return state
 
     def compute_dones(self) -> torch.Tensor:
@@ -285,22 +279,23 @@ class ApproachEnv:
         self.env_current_steps += 1
         actions = (actions - 1.0) * self.action_scale
         
-        targets = self.dof_targets + actions
-        targets = torch_utils.tensor_clamp(
-            targets,
-            self.arm_lower_limits,
-            self.arm_upper_limits,
-        )
-        self.dof_targets[:, :] = targets[:, :]
-        self.gym.set_dof_position_target_tensor(
-            self.sim, gymtorch.unwrap_tensor(self.dof_targets)
-        )
-
-        # targets = self.dof_positions[:, :] + actions
-        # self.dof_positions[:, :] = targets[:,:]
-        # self.dof_velocities[:, :] = .0
-        # self.dof_targets[:, :] = targets[:, :]
-        # self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
+        if self.action_mode == ActionMode.DOF_TARGET:
+            targets = self.dof_targets + actions
+            targets = torch_utils.tensor_clamp(
+                targets,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_position_target_tensor(
+                self.sim, gymtorch.unwrap_tensor(self.dof_targets)
+            )
+        else:
+            targets = self.dof_positions[:, :] + actions
+            self.dof_positions[:, :] = targets[:,:]
+            self.dof_velocities[:, :] = .0
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
 
         self.tick()
 
@@ -362,8 +357,8 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    # rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)\
-    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
+    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    # rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
     # lf_closest = lf_distances.le(distance_threshold)
