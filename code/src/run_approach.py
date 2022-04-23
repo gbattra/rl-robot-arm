@@ -42,17 +42,17 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
-EPS_DECAY: float = 0.999
+EPS_DECAY: float = 0.9999
 
-REPLAY_BUFFER_SIZE: int = 10000000
-TARGET_UPDATE_FREQ: int = 10
+REPLAY_BUFFER_SIZE: int = 1000000
+TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 500
+N_ENVS: int = 4000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 200
+N_STEPS: int = 300
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -187,12 +187,12 @@ def main():
     )
 
     action_scale = 0.1
-    dist_thresh = 0.25
+    dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
         action_scale=action_scale,
         gripper_offset_z=0,
-        distance_threshold=0.25,
+        distance_threshold=dist_thresh,
         episode_length=N_STEPS,
         randomize=False,
         action_mode=ActionMode.DOF_TARGET
@@ -202,9 +202,9 @@ def main():
 
     agent_id = 0
     dim = 64
-    two_layers = True
+    two_layers = False
     batch_size = N_ENVS
-    buffer_type = BufferType.HER
+    buffer_type = BufferType.WINNING
     for lr in [0.0001, 0.001]:
         for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
             for randomize in [False, True]:

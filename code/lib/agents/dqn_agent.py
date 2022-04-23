@@ -94,7 +94,7 @@ class DQNAgent(Agent):
 
                     self.remember(s, a, s_prime, r, done)
 
-                    loss = self.optimize(t)
+                    loss = self.optimize(gt)
                     analytics(r, done, loss, p, e, t)
 
                     # reset envs which have finished task
