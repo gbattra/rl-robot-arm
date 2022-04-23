@@ -37,6 +37,7 @@ class HerBuffer(ReplayBuffer):
             next_states: torch.Tensor,
             rwds: torch.Tensor,
             dones: torch.Tensor) -> None:
+        super().add(states, actions, next_states, rwds, dones)
         self.traj_states[self.env_idxs, self.env_traj_steps, :] = states[:]
         self.traj_actions[self.env_idxs, self.env_traj_steps, :] = actions[:]
         self.traj_next_states[self.env_idxs, self.env_traj_steps, :] = next_states[:]

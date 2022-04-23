@@ -19,7 +19,7 @@ from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
 from lib.envs.approach_env import ApproachEnv
 from lib.buffers.buffer import BufferType, ReplayBuffer
-from lib.networks.nn import Dqn
+from lib.networks.dqn import Dqn
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
@@ -187,7 +187,7 @@ def main():
     )
 
     action_scale = 0.1
-    dist_thresh = 0.2
+    dist_thresh = 0.25
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
         action_scale=action_scale,

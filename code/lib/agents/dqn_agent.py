@@ -30,13 +30,11 @@ class DQNAgent(Agent):
             epsilon: Callable,
             gamma: float,
             batch_size: int,
-            target_update_freq: int,
-            her: bool = False) -> None:
+            target_update_freq: int) -> None:
         super().__init__()
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.agent_id = agent_id
-        self.her = her
         self.n_dofs = n_dofs
         self.n_dof_actions = n_dof_actions
         self.buffer = buffer
@@ -112,30 +110,6 @@ class DQNAgent(Agent):
 
         samples = self.buffer.sample(self.batch_size)
         states, actions, next_states, rewards, dones = samples
-
-        # if self.her:
-        #     # set all state rewards to 0 and dones to False
-        # rewards_her = torch.ones_like(rewards).to(self.device)
-        # dones_her = torch.ones_like(dones).bool().to(self.device)
-        # states_her = states.clone().to(self.device)
-        # next_states_her = next_states.clone().to(self.device)
-        # actions_her = actions.clone().to(self.device)
-
-        # sample non-terminal state and set dones
-        # sample_target_idx = torch.randint(0, states.shape[0], (1,1)).to(self.device).item()
-        # rewards_her[sample_target_idx] = 1.
-        # dones_her[sample_target_idx] = True
-
-        # set all other state rewards to 0
-        # target_hand_pos = next_states[:, -6:-3]
-        # states_her[:, -3:] = target_hand_pos[:, :]
-        # next_states_her[:, -3:] = target_hand_pos[:, :]
-
-        # states = torch.vstack([states, states_her])
-        # next_states = torch.vstack([next_states, next_states_her])
-        # actions = torch.vstack([actions, actions_her])
-        # rewards = torch.vstack([rewards, rewards_her])
-        # dones = torch.vstack([dones, dones_her])
 
         target_action_values = (
             self.target_net(next_states).view((-1,) + (n_joints, n_joint_actions)).max(-1)[0]
