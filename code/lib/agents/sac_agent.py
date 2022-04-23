@@ -26,9 +26,10 @@ class SacAgent(Agent):
             value_lr: float,
             gamma: float,
             epsilon: Callable,
-            target_update_freq: int
+            target_update_freq: int,
+            save_path: str
         ) -> None:
-        super().__init__()
+        super().__init__(save_path)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.buffer = buffer

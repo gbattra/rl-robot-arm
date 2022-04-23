@@ -30,8 +30,9 @@ class DQNAgent(Agent):
             epsilon: Callable,
             gamma: float,
             batch_size: int,
-            target_update_freq: int) -> None:
-        super().__init__()
+            target_update_freq: int,
+            save_path: str) -> None:
+        super().__init__(save_path)
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.agent_id = agent_id
@@ -73,33 +74,6 @@ class DQNAgent(Agent):
             policy_actions = joint_a_vals.max(-1)[1].to(self.device)
             policy_actions[randoms] = random_actions[randoms]
         return policy_actions
-
-    def train(
-            self,
-            env: Env,
-            n_epochs: int,
-            n_episodes: int,
-            n_steps: int,
-            analytics: Callable) -> Dict:
-        gt = 0
-        for p in trange(n_epochs, desc="Epoch", leave=False):
-            for e in trange(n_episodes, desc="Episode", leave=False):
-                env.reset()
-                for t in trange(n_steps, desc="Step", leave=False):
-                    s = env.compute_observations()
-                    a = self.act(s, gt)
-                    s_prime, r, done, _ = env.step(a)
-
-                    self.remember(s, a, s_prime, r, done)
-
-                    loss = self.optimize(gt)
-                    analytics(r, done, loss, p, e, t)
-
-                    # reset envs which have finished task
-                    env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])
-
-                    gt += 1
-            torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}.pth')
 
     def optimize(self, timestep: int) -> float:
         n_joint_actions = self.n_dof_actions

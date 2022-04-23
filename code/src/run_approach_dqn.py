@@ -96,7 +96,8 @@ def run_experiment(
         epsilon=epsilon,
         gamma=experiment.gamma,
         batch_size=experiment.batch_size,
-        target_update_freq=experiment.target_update_freq
+        target_update_freq=experiment.target_update_freq,
+        save_path=f'models/dqn/dqn_{experiment.agent_id}.pth'
     )
 
     analytics: Analytics = initialize_analytics(
