@@ -15,6 +15,7 @@ import torch
 from typing import Callable
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
+from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
 from lib.envs.approach_env import ApproachEnv
 from lib.buffers.buffer import BufferType, ReplayBuffer
@@ -47,7 +48,7 @@ REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 10
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 1000
+N_ENVS: int = 500
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -75,6 +76,8 @@ def run_experiment(
 
     if experiment.buffer_type == BufferType.STANDARD:
         buffer: ReplayBuffer = ReplayBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs)
+    elif experiment.buffer_type == BufferType.HER:
+        buffer: ReplayBuffer = HerBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, experiment.n_timesteps)
     else:
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
@@ -201,7 +204,7 @@ def main():
     dim = 64
     two_layers = True
     batch_size = N_ENVS
-    buffer_type = BufferType.WINNING
+    buffer_type = BufferType.HER
     for lr in [0.0001, 0.001]:
         for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
             for randomize in [False, True]:
