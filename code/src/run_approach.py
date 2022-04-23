@@ -101,7 +101,7 @@ def run_experiment(
         n_envs=n_envs,
         plot_freq=PLOT_FREQ,
         save_freq=SAVE_FREQ,
-        lr=LEARNING_RATE,
+        lr=lr,
         ep_length=N_STEPS,
         dim_size=dim,
         action_scale=env.action_scale,
@@ -207,8 +207,9 @@ def main():
         for batch_size in [512, 1024]:
             for lr in [0.0001, 0.001]:
                 for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-                    agent_id += 1
-                    run_experiment(env, dim, False, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
+                    for two_layers in [True, False]:
+                        agent_id += 1
+                        run_experiment(env, dim, two_layers, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
 
     env.destroy()
 

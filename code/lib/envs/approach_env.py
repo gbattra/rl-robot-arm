@@ -202,7 +202,7 @@ class ApproachEnv:
         conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
         arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
         arm_confs = torch_utils.tensor_clamp(
-            arm_confs, # * (2 * math.pi) * conf_signs,
+            arm_confs * (2 * math.pi) * conf_signs,
             self.arm_lower_limits,
             self.arm_upper_limits,
         )
@@ -214,10 +214,10 @@ class ApproachEnv:
         signs = (torch.randint(0, 2, (self.n_envs, 3), device=self.device) * 2.) - 1.
         box_poses = (torch.ones((self.n_envs, 3), device=self.device) * 0.25 + (rands * 0.5)) * signs
         
-        box_poses[..., 0] = .5
-        box_poses[..., 1] = .5
-        box_poses[..., 2] = .05
-        # box_poses[..., 2] = torch.abs(box_poses[..., 2])
+        # box_poses[..., 0] = .5
+        # box_poses[..., 1] = .5
+        # box_poses[..., 2] = .05
+        box_poses[..., 2] = torch.abs(box_poses[..., 2])
 
         root_states = self.init_root.clone()
         root_states[reset_envs, 1, :3] = box_poses[reset_envs, :]
@@ -253,10 +253,10 @@ class ApproachEnv:
         return state
 
     def compute_dones(self) -> torch.Tensor:
-        # dones = compute_dones(self.left_finger_poses, self.box_poses, self.distance_threshold, self.device)
+        dones = compute_dones(self.left_finger_poses, self.box_poses, self.distance_threshold, self.device)
         # # self.dones_buf[:,:] = dones[:, :]
         # return dones
-        dones = (self.env_current_steps >= self.episode_length).to(self.device).unsqueeze(-1)
+        # dones = (self.env_current_steps >= self.episode_length).to(self.device).unsqueeze(-1)
         return dones
 
     def compute_rewards(self):
@@ -357,7 +357,7 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
+    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
     # lf_closest = lf_distances.le(distance_threshold)

@@ -98,7 +98,7 @@ class DQNAgent(Agent):
                     analytics(r, done, loss, p, e, t)
 
                     # reset envs which have finished task
-                    # env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])
+                    env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])
 
                     gt += 1
             torch.save(self.policy_net.state_dict(), f'models/dqn/dqn_{self.agent_id}.pth')
