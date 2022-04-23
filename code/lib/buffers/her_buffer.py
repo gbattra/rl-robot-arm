@@ -5,6 +5,7 @@
 Buffer for HER
 '''
 
+from typing import Tuple
 import torch
 from lib.buffers.buffer import ReplayBuffer
 
@@ -47,21 +48,73 @@ class HerBuffer(ReplayBuffer):
         self._flush_dones(dones)
 
     def _flush_dones(self, dones: torch.Tensor) -> None:
-        flush_envs = self.env_idxs[dones[:, 0] + (self.env_traj_steps >= self.n_steps)]
-        for env_idx in flush_envs:
-            traj_states = self.traj_states[env_idx, :self.env_traj_steps[env_idx]]
-            traj_actions = self.traj_actions[env_idx, :self.env_traj_steps[env_idx]]
-            traj_next_states = self.traj_next_states[env_idx, :self.env_traj_steps[env_idx]]
-            traj_rwds = self.traj_rwds[env_idx, :self.env_traj_steps[env_idx]]
-            traj_dones = self.traj_dones[env_idx, :self.env_traj_steps[env_idx]]
-            
-            goal_state = traj_next_states[-1][-6:-3]
-            traj_dones[-1] = True
-            traj_rwds[-1] = 1.0
+        results = flush_dones(
+            dones,
+            self.env_idxs,
+            self.env_traj_steps,
+            self.traj_states,
+            self.traj_actions,
+            self.traj_next_states,
+            self.traj_rwds,
+            self.traj_dones,
+            self.state_size,
+            self.action_size,
+            self.n_steps,
+            self.device)
+        all_traj_states, all_traj_actions, all_traj_next_states, all_traj_dones, all_traj_rwds = results
 
-            traj_states[:, -3:] = goal_state[:]
-            traj_next_states[:, -3:] = goal_state[:]
-
-            super().add(traj_states, traj_actions, traj_next_states, traj_rwds, traj_dones)
+        super().add(all_traj_states, all_traj_actions, all_traj_next_states, all_traj_dones, all_traj_rwds)
         
-        self.env_traj_steps[flush_envs] = 0
+
+@torch.jit.script
+def flush_dones(
+            dones,
+            env_idxs,
+            env_traj_steps,
+            traj_states,
+            traj_actions,
+            traj_next_states,
+            traj_rwds,
+            traj_dones,
+            state_size: int,
+            action_size: int,
+            n_steps: int,
+            device: str) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        flush_envs = env_idxs[dones[:, 0] + (env_traj_steps >= n_steps)]
+        total_steps = int(env_traj_steps[flush_envs].sum().item())
+        
+        all_traj_states = torch.zeros((total_steps, state_size), device=device)
+        all_traj_next_states = torch.zeros((total_steps, state_size), device=device)
+        all_traj_actions = torch.zeros((total_steps, action_size), device=device, dtype=torch.long)
+        all_traj_dones = torch.zeros((total_steps, 1), device=device, dtype=torch.bool)
+        all_traj_rwds = torch.zeros((total_steps, 1), device=device)
+
+        traj_idx = 0
+        for env_idx in flush_envs:
+            traj_size = env_traj_steps[env_idx]
+            next_traj_idx = traj_idx + traj_size
+
+            env_traj_states = traj_states[env_idx, :traj_size]
+            env_traj_actions = traj_actions[env_idx, :traj_size]
+            env_traj_next_states = traj_next_states[env_idx, :traj_size]
+            env_traj_rwds = traj_rwds[env_idx, :traj_size]
+            env_traj_dones = traj_dones[env_idx, :traj_size]
+
+            goal_state = env_traj_next_states[-1][-6:-3]
+            env_traj_dones[-1] = True
+            env_traj_rwds[-1] = 1.0
+
+            env_traj_states[:, -3:] = goal_state[:]
+            env_traj_next_states[:, -3:] = goal_state[:]
+
+            all_traj_states[traj_idx:next_traj_idx, :] = env_traj_states[:]
+            all_traj_next_states[traj_idx:next_traj_idx, :] = env_traj_next_states[:]
+            all_traj_actions[traj_idx:next_traj_idx, :] = env_traj_actions[:]
+            all_traj_dones[traj_idx:next_traj_idx, :] = env_traj_dones[:]
+            all_traj_rwds[traj_idx:next_traj_idx, :] = env_traj_rwds[:]
+
+            traj_idx = next_traj_idx
+
+        env_traj_steps[flush_envs] = 0
+
+        return all_traj_states, all_traj_actions, all_traj_next_states, all_traj_dones, all_traj_rwds
