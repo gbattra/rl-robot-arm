@@ -42,17 +42,17 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
-EPS_DECAY: float = 0.9999
+EPS_DECAY: float = 0.999
 
-REPLAY_BUFFER_SIZE: int = 1000000
-TARGET_UPDATE_FREQ: int = 100
+REPLAY_BUFFER_SIZE: int = 10000000
+TARGET_UPDATE_FREQ: int = 10
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 4000
+N_ENVS: int = 1000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 300
+N_STEPS: int = 200
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -71,8 +71,8 @@ def run_experiment(
         EPS_END, EPS_START * (experiment.eps_decay**t)
     )
 
-    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size, experiment.two_layers).to(env.device)
-    target_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size, experiment.two_layers).to(env.device)
+    policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
+    target_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
 
     if experiment.buffer_type == BufferType.STANDARD:
         buffer: ReplayBuffer = ReplayBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs)
@@ -202,36 +202,35 @@ def main():
 
     agent_id = 0
     dim = 64
-    two_layers = False
     batch_size = N_ENVS
     buffer_type = BufferType.WINNING
-    for buffer_type in [BufferType.STANDARD, BufferType.WINNING, BufferType.HER]:
-        for randomize in [False, True]:
-            experiment = Experiment(
-                n_epochs=N_EPOCHS,
-                n_episodes=N_EPISODES,
-                n_timesteps=N_STEPS,
-                dim_size=dim,
-                two_layers=two_layers,
-                agent_id=agent_id,
-                n_envs=N_ENVS,
-                batch_size=batch_size,
-                lr=0.0001,
-                buffer_type=buffer_type,
-                eps_decay=EPS_DECAY,
-                randomize=randomize,
-                gamma=GAMMA,
-                action_scale=action_scale,
-                dist_thresh=dist_thresh,
-                target_update_freq=TARGET_UPDATE_FREQ,
-                replay_buffer_size=REPLAY_BUFFER_SIZE,
-                action_mode=ActionMode.DOF_POSITION
-            )
-            run_experiment(
-                env=env,
-                experiment=experiment,
-                debug=args.debug)
-            agent_id += 1
+    for dist_thresh in [0.25, 0.15]:
+        for buffer_type in [BufferType.WINNING, BufferType.STANDARD, BufferType.HER]:
+            for randomize in [False, True]:
+                experiment = Experiment(
+                    n_epochs=N_EPOCHS,
+                    n_episodes=N_EPISODES,
+                    n_timesteps=N_STEPS,
+                    dim_size=dim,
+                    agent_id=agent_id,
+                    n_envs=N_ENVS,
+                    batch_size=batch_size,
+                    lr=0.0001,
+                    buffer_type=buffer_type,
+                    eps_decay=EPS_DECAY,
+                    randomize=randomize,
+                    gamma=GAMMA,
+                    action_scale=action_scale,
+                    dist_thresh=dist_thresh,
+                    target_update_freq=TARGET_UPDATE_FREQ,
+                    replay_buffer_size=REPLAY_BUFFER_SIZE,
+                    action_mode=ActionMode.DOF_POSITION
+                )
+                run_experiment(
+                    env=env,
+                    experiment=experiment,
+                    debug=args.debug)
+                agent_id += 1
 
     env.destroy()
 

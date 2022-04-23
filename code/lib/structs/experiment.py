@@ -15,7 +15,6 @@ from lib.structs.approach_task import ActionMode
 class Experiment:
     gamma: float
     dim_size: int
-    two_layers: bool
     agent_id: int
     n_envs: int
     n_epochs: int
@@ -34,6 +33,6 @@ class Experiment:
 
     def __str__(self) -> str:
         return f'LR: {self.lr} | Dim Size: {self.dim_size} | Action Scale: {self.action_scale} | Dist. Thresh.: {self.dist_thresh} '\
-            + f'| Epsd. Length: {self.n_timesteps} | N Envs: {self.n_envs} \n | Two Layers: {self.two_layers}' \
+            + f'| Epsd. Length: {self.n_timesteps} | N Envs: {self.n_envs} \n ' \
             + f' | Batch Size: {self.batch_size} | {self.buffer_type} | Eps Decay: {self.eps_decay} | {self.action_mode} \n' \
             + f' | Randomize: {self.randomize}'
