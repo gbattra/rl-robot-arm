@@ -6,6 +6,7 @@ Box Approach env adhering to Elegant RL env for multiprocessing
 '''
 
 
+import math
 from isaacgym import gymapi, gymutil
 
 import torch
@@ -37,13 +38,13 @@ LEARNING_RATE: float = 0.001
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
-EPS_DECAY: float = 0.9999
+EPS_DECAY: float = 0.999
 
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 1000
+N_ENVS: int = 100
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -159,7 +160,7 @@ def main():
     sim_config: ArmAndBoxSimConfig = ArmAndBoxSimConfig(
         n_envs=N_ENVS,
         env_spacing=1.5,
-        n_envs_per_row=10,
+        n_envs_per_row=int(math.sqrt(N_ENVS)),
         n_actors_per_env=2,
         arm_config=ArmConfig(
             hand_link="panda_link7",
@@ -197,19 +198,34 @@ def main():
     )
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
-        action_scale=0.1, gripper_offset_z=0, distance_threshold=0.2, episode_length=N_STEPS
+        action_scale=0.1, gripper_offset_z=0, distance_threshold=0.25, episode_length=N_STEPS
     )
 
     env = ApproachEnv(sim_config, task_config, gym)
 
     agent_id = 0
-    for dim in [256, 512]:
-        for batch_size in [512, 1024]:
-            for lr in [0.0001, 0.001]:
-                for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
-                    for two_layers in [True, False]:
-                        agent_id += 1
-                        run_experiment(env, dim, two_layers, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
+    # for dim in [256, 512]:
+    #     for batch_size in [1024]:
+    #         for lr in [0.001]:
+    #             for buffer_type in [BufferType.STANDARD, BufferType.WINNING]:
+    #                 for two_layers in [True, False]:
+    #                     agent_id += 1
+    #                     run_experiment(env, dim, two_layers, agent_id, N_ENVS, batch_size, args.debug, lr, buffer_type)
+    dim = 64
+    two_layers = True
+    batch_size = 64**2
+    lr = 0.001
+    buffer_type = BufferType.WINNING
+    run_experiment(
+        env=env,
+        dim=dim,
+        two_layers=two_layers,
+        agent_id=agent_id,
+        n_envs=N_ENVS,
+        batch_size=batch_size,
+        debug=args.debug,
+        lr=lr,
+        buffer_type=buffer_type)
 
     env.destroy()
 
