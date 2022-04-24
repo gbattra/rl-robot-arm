@@ -5,8 +5,10 @@
 Wrapper class for running experiment and saving stuff
 '''
 
+import json
 import os
 from typing import Callable, Dict
+from attr import asdict
 
 from tqdm import trange
 from elegantrl.envs.isaac_tasks.base.vec_task import Env
@@ -40,7 +42,9 @@ class Runner:
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.models_dir, exist_ok=True)
 
-    
+        with open(f'{self.root}/config.json', 'w') as f:
+            json.dump(experiment.to_dict(), f, indent=4, sort_keys=True)
+        
     def run(self) -> Dict:
         gt = 0
         for p in trange(self.experiment.n_epochs, desc="Epoch", leave=False):

@@ -50,7 +50,7 @@ REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 
 N_ENVS: int = 1000
-N_EPOCHS: int = 4
+N_EPOCHS: int = 3
 N_EPISODES: int = 100
 N_STEPS: int = 200
 

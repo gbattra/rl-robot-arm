@@ -19,8 +19,8 @@ class ApproachTaskActions(IntEnum):
 
 
 class ActionMode(Enum):
-    DOF_TARGET = 0
-    DOF_POSITION = 1
+    DOF_TARGET = 'target'
+    DOF_POSITION = 'position'
 
 
 @dataclass

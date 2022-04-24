@@ -12,9 +12,9 @@ import torch
 
 
 class BufferType(Enum):
-    STANDARD = 0
-    WINNING = 1
-    HER = 2
+    STANDARD = 'standard'
+    WINNING = 'winning'
+    HER = 'her'
 
 
 class ReplayBuffer:
