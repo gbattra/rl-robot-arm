@@ -46,7 +46,7 @@ class ReplayBuffer:
             rwds: torch.Tensor,
             dones: torch.Tensor) -> None:
         n_samples = states.shape[0]
-        if self.sample_index + n_samples >= self.size - 1:
+        if self.sample_index + n_samples >= self.size:
             n_samples = self.size - self.sample_index
         self.states_buffer[self.sample_index:self.sample_index+n_samples, :] = states.view(-1, states.shape[-1])[:n_samples,:]
         self.actions_buffer[self.sample_index:self.sample_index+n_samples, :] = actions.view(-1, actions.shape[-1])[:n_samples,:]
@@ -55,7 +55,7 @@ class ReplayBuffer:
         self.dones_buffer[self.sample_index:self.sample_index+n_samples, :] = dones.view(-1, dones.shape[-1])[:n_samples,:]
         
         self.sample_index += n_samples
-        if self.sample_index >= self.size - 1:
+        if self.sample_index >= self.size:
             self.sample_index = 0
             self.sample_buffers_filled = True
 

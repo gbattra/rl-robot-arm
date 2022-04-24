@@ -23,6 +23,7 @@ class Analytics:
     env_timesteps: torch.Tensor
     epoch_rewards: torch.Tensor
     epoch_episodes: torch.Tensor
+    epoch_losses: torch.Tensor
     epoch_episode_lengths: torch.Tensor
     debug: bool
 
@@ -39,6 +40,7 @@ def initialize_analytics(
     env_timesteps = torch.zeros((experiment.n_envs, 1)).to(device)
     epoch_rewards = torch.zeros((1, experiment.n_episodes * experiment.n_epochs)).to(device)
     epoch_episodes = torch.zeros((1, experiment.n_episodes * experiment.n_epochs)).to(device)
+    epoch_losses = torch.zeros((1, experiment.n_episodes * experiment.n_epochs)).to(device)
     epoch_episode_lengths = torch.zeros((1, experiment.n_episodes * experiment.n_epochs)).to(device)
 
     analytics = Analytics(
@@ -46,6 +48,7 @@ def initialize_analytics(
         env_timesteps=env_timesteps,
         epoch_rewards=epoch_rewards,
         epoch_episodes=epoch_episodes,
+        epoch_losses=epoch_losses,
         epoch_episode_lengths=epoch_episode_lengths,
         plot_freq=plot_freq,
         save_freq=save_freq,
@@ -65,8 +68,9 @@ def plot_learning(
     cur_ep = (epoch * analytics.experiment.n_episodes) + episode
     cur_step = (cur_ep * analytics.experiment.n_timesteps) + timestep
     analytics.env_timesteps[:] += 1
-    analytics.epoch_rewards[0, cur_ep] += rewards.sum().item()
-    analytics.epoch_episodes[0, cur_ep] += dones.long().sum().item()
+    analytics.epoch_rewards[0, cur_ep] += rewards.detach().sum().item()
+    analytics.epoch_episodes[0, cur_ep] += dones.detach().long().sum().item()
+    analytics.epoch_losses[0, cur_ep] += loss.detach().item()
 
     if not analytics.debug:
         return
@@ -83,10 +87,12 @@ def plot_learning(
     plt.figure(1, figsize=(9, 10))
     plt.clf()
 
-    epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
-    epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
+    epoch_rewards = analytics.epoch_rewards.cpu().numpy()
+    epoch_episodes = analytics.epoch_episodes.cpu().numpy()
+    epoch_losses = analytics.epoch_losses.cpu().numpy()
 
     plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
+    # plt.plot(epoch_losses[0, :cur_ep] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
     # plt.plot(epoch_rewards[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
 
     desc = str(analytics.experiment)

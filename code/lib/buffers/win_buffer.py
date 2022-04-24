@@ -45,7 +45,7 @@ class WinBuffer(ReplayBuffer):
         if sample_size == 0:
             return
         if self.winning_index + sample_size >= self.size:
-            sample_size = self.size - self.winning_index - 1
+            sample_size = self.size - self.winning_index
         self.winning_states_buffer[self.winning_index:self.winning_index + sample_size, :] = states[_winning][:sample_size, :]
         self.winning_actions_buffer[self.winning_index:self.winning_index + sample_size, :] = actions[_winning][:sample_size, :]
         self.winning_next_states_buffer[self.winning_index:self.winning_index + sample_size, :] = next_states[_winning][:sample_size, :]
@@ -53,7 +53,7 @@ class WinBuffer(ReplayBuffer):
         self.winning_dones_buffer[self.winning_index:self.winning_index + sample_size, :] = dones[_winning][:sample_size, :]
 
         self.winning_index += sample_size
-        if self.winning_index >= self.size - 1:
+        if self.winning_index >= self.size:
             self.winning_index = 0
             self.winning_buffers_filled = True
 

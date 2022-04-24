@@ -79,10 +79,10 @@ class ActorCriticAgent(Agent):
 
         target_values = rewards + (self.gamma * next_state_values * ~dones)
         td_error = target_values - state_values
-        actor_loss = (1./self.batch_size) * (-action_log_probs * td_error)
-        critic_loss = (1./self.batch_size) * (td_error ** 2)
+        actor_loss = (-action_log_probs * td_error)**2
+        critic_loss = td_error ** 2
 
-        total_loss = (actor_loss + critic_loss).sum()
+        total_loss = (1./self.batch_size) * (actor_loss + critic_loss).sum()
 
         self.actor_critic.optimizer.zero_grad()
         total_loss.backward()
@@ -90,3 +90,5 @@ class ActorCriticAgent(Agent):
 
         if timestep % self.target_update_freq == 0:
             self.target_actor_critic.load_state_dict(self.actor_critic.state_dict())
+
+        return total_loss
