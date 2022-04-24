@@ -2,7 +2,7 @@
 # 04.20.22
 
 '''
-Box Approach env adhering to Elegant RL env for multiprocessing
+Run approach problem with DQN methods
 '''
 
 
@@ -216,7 +216,7 @@ def main():
                     agent_id=agent_id,
                     n_envs=N_ENVS,
                     batch_size=batch_size,
-                    lr=0.0001,
+                    lr=0.001,
                     buffer_type=buffer_type,
                     eps_decay=EPS_DECAY,
                     randomize=randomize,

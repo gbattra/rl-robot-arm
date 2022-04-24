@@ -25,7 +25,7 @@ class CriticNetwork(nn.Module):
             nn.Linear(dim_size, 1)
         )
 
-        # self.network.apply(init_weights)
+        self.network.apply(init_weights)
 
         self.loss_fn = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
@@ -47,7 +47,7 @@ class ActorNetwork(nn.Module):
             nn.Linear(dim_size, action_size * 2)
         )
         
-        # self.network.apply(init_weights)
+        self.network.apply(init_weights)
 
         self.loss_fn = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)

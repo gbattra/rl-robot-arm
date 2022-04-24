@@ -98,7 +98,7 @@ class DQNAgent(Agent):
             .gather(-1, actions.unsqueeze(-1))
         )
 
-        loss = self.loss_fn(q_est, q_targets.unsqueeze(-1))
+        loss = (1./self.batch_size) * self.loss_fn(q_est, q_targets.unsqueeze(-1))
 
         self.optimizer.zero_grad()
         loss.backward()

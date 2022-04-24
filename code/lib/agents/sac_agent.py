@@ -53,7 +53,8 @@ class SacAgent(Agent):
         self.target_critic.load_state_dict(self.behavior_critic.state_dict())
 
     def save_checkpoint(self) -> None:
-        torch.save(self.policy_net.state_dict(), self.save_path)
+        pass
+        # torch.save(self.policy_net.state_dict(), self.save_path)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
@@ -85,14 +86,13 @@ class SacAgent(Agent):
         next_actions, next_log_probs = self.actor.sample(next_states)
         critic_next_states = torch.cat((next_states, next_actions), dim=1)
         next_state_values = self.target_critic(critic_next_states)
-        next_state_values[dones] = 0.0
         entropies = self.alpha * next_log_probs.sum(dim=1, keepdim=True)
-        target_values = rewards + (self.gamma * (next_state_values - entropies))
+        target_values = rewards + (self.gamma * (next_state_values - entropies) * ~dones)
 
         critic_states = torch.cat((states, actions), dim=1)
         critic_values = self.behavior_critic(critic_states)
 
-        critic_loss = self.behavior_critic.loss_fn(critic_values, target_values)
+        critic_loss = (1./self.batch_size) * self.behavior_critic.loss_fn(critic_values, target_values)
         self.behavior_critic.optimizer.zero_grad()
         critic_loss.backward()
         self.behavior_critic.optimizer.step()

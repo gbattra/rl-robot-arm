@@ -2,7 +2,7 @@
 # 04.20.22
 
 '''
-Run approach problem with SAC methods
+Run approach problem with AC methods
 '''
 
 
@@ -11,8 +11,7 @@ from isaacgym import gymapi, gymutil
 from typing import Callable
 
 import torch
-from lib.agents.sac_agent import SacAgent
-
+from lib.agents.ac_agent import ActorCriticAgent
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
@@ -82,20 +81,19 @@ def run_experiment(
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
 
-    agent: SacAgent = SacAgent(
+    agent: ActorCriticAgent = ActorCriticAgent(
         buffer=buffer,
         obs_size=env.observation_size,
-        action_size=env.arm_n_dofs,
+        n_actions=len(ApproachTaskActions),
+        n_joints=env.arm_n_dofs,
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
-        alpha=ACTOR_ALPHA,
-        actor_lr=experiment.lr,
-        critic_lr=experiment.lr,
+        lr=experiment.lr,
         gamma=GAMMA,
         epsilon=epsilon,
-        target_update_freq=TARGET_UPDATE_FREQ,
-        save_path=f'models/sac/sac_{experiment.agent_id}.pth'
+        target_update_freq=experiment.target_update_freq,
+        save_path=f'models/ac/ac_{experiment.agent_id}.pth'
     )
 
     analytics: Analytics = initialize_analytics(
