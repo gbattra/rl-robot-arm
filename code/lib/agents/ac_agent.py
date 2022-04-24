@@ -23,6 +23,7 @@ class ActorCriticAgent(Agent):
             network_dim_size: int,
             batch_size: int,
             action_scale: float,
+            alpha: float,
             lr: float,
             gamma: float,
             target_update_freq: int,
@@ -32,6 +33,7 @@ class ActorCriticAgent(Agent):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.buffer = buffer
+        self.alpha = alpha
         self.lr = lr
         self.action_scale = action_scale
         self.gamma = gamma
@@ -67,7 +69,7 @@ class ActorCriticAgent(Agent):
 
     def optimize(self, timestep: int) -> torch.Tensor:
         if self.buffer.sample_index < self.batch_size and not self.buffer.sample_buffers_filled:
-            return 0
+            return torch.tensor(0, device=self.device)
 
         samples = self.buffer.sample(self.batch_size)
         states, actions, next_states, rewards, dones = samples
@@ -79,7 +81,7 @@ class ActorCriticAgent(Agent):
 
         target_values = rewards + (self.gamma * next_state_values * ~dones)
         td_error = target_values - state_values
-        actor_loss = (-action_log_probs * td_error)**2
+        actor_loss = (-action_log_probs * td_error) * self.alpha
         critic_loss = td_error ** 2
 
         total_loss = (1./self.batch_size) * (actor_loss + critic_loss).sum()

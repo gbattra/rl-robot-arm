@@ -44,7 +44,7 @@ REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 100
+N_ENVS: int = 4000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -85,6 +85,7 @@ def run_experiment(
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
+        alpha=1e-2,
         lr=experiment.lr,
         gamma=GAMMA,
         target_update_freq=experiment.target_update_freq,
@@ -194,7 +195,7 @@ def main():
 
     agent_id = 0
     dim = 64*2*2
-    batch_size = 1000
+    batch_size = 4000
     for dist_thresh in [0.25, 0.15]:
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [False, True]:

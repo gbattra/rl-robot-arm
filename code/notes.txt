@@ -1,0 +1,19 @@
+Actor Critic:
+    Catastrophic Collapse:
+        What:
+            - Performance would suddenly collapse around episode 60
+        Why:
+            - The total loss was negative, as the critic loss was zero but the actor loss was negative
+            - This caused the critic to upate its state values in the negative direction
+        Fix:
+            - Squaring the actor loss resolved this collapse but damped Performance
+            - Scaling the actor loss by a factor alpha fixed the issue without hampering Performance
+    
+    Variance Reduction:
+        What:
+            - Learning is often unstable and prone to large swings
+        Why:
+            - Stochastic GD results in biases in small batches having big impacts on the weight updates
+        Fix:
+            - More envs generating more samples per step
+            - Bigger batch sizes
