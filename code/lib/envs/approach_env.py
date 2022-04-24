@@ -323,8 +323,8 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
-    # rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
+    # rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
     # lf_closest = lf_distances.le(distance_threshold)

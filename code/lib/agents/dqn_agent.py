@@ -62,19 +62,19 @@ class DQNAgent(Agent):
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
-            a_vals: torch.Tensor = self.policy_net(state).to(self.device)
+            a_vals: torch.Tensor = self.policy_net(state)
             # reshape output to correspond to joints: [N x 21] -> [N x n_joints x n_joint_actions]
             joint_a_vals: torch.Tensor = a_vals.view(
                 (-1,) + (self.n_dofs, self.n_dof_actions)
             ).to(self.device)
-            randoms = torch.rand(state.shape[0]) < self.epsilon(t)
+            randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
             # get random action indices in shape: [N x n_joints]
             random_actions = torch.randint(
-                0, self.n_dof_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1])
-            ).to(self.device)
+                0, self.n_dof_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1]), device=self.device
+            )
 
             # get max a_vals per joint: [N x n_joints]
-            policy_actions = joint_a_vals.max(-1)[1].to(self.device)
+            policy_actions = joint_a_vals.max(-1)[1]
             policy_actions[randoms] = random_actions[randoms]
         return policy_actions
 

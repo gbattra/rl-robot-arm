@@ -44,19 +44,25 @@ class ActorCriticAgent(Agent):
         self.target_update_freq = target_update_freq
 
         self.actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size, save_path).to(self.device)
+        self.target_actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size, save_path).to(self.device)
+        self.target_actor_critic.load_state_dict(self.actor_critic.state_dict())
 
     def save_checkpoint(self) -> None:
-        torch.save(self.policy_net.state_dict(), self.save_path)
+        torch.save(self.actor_critic.state_dict(), self.save_path)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():
-            # if torch.rand(1) < self.epsilon(t):
-            #     actions = torch.rand((state.shape[0], self.n_joints), device=self.device) \
-            #         * torch.randint(-1, 2, (state.shape[0], self.n_joints), device=self.device)
-            # else:
             _, policy = self.actor_critic(state)
             action_probs = torch.distributions.Categorical(policy)
             actions = action_probs.sample()
+
+            randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
+            # get random action indices in shape: [N x n_joints]
+            random_actions = torch.randint(
+                0, self.n_actions, (state.shape[0], self.n_joints), device=self.device
+            )
+            # get max a_vals per joint: [N x n_joints]
+            actions[randoms] = random_actions[randoms]
         
         return actions
 
@@ -70,4 +76,27 @@ class ActorCriticAgent(Agent):
         self.buffer.add(states, actions, s_primes, rwds, dones)
 
     def optimize(self, timestep: int) -> torch.Tensor:
-        return 0
+        if self.buffer.sample_index < self.batch_size and not self.buffer.sample_buffers_filled:
+            return 0
+
+        samples = self.buffer.sample(self.batch_size)
+        states, actions, next_states, rewards, dones = samples
+
+        state_values, action_probs = self.actor_critic(states)
+        next_state_values, _ = self.target_actor_critic(next_states)
+        action_dist = torch.distributions.Categorical(action_probs)
+        action_log_probs = action_dist.log_prob(actions)
+
+        target_values = rewards + (self.gamma * next_state_values * ~dones)
+        td_error = target_values - state_values
+        actor_loss = (1./self.batch_size) * (-action_log_probs * td_error)
+        critic_loss = (1./self.batch_size) * (td_error ** 2)
+
+        total_loss = (actor_loss + critic_loss).sum()
+
+        self.actor_critic.optimizer.zero_grad()
+        total_loss.backward()
+        self.actor_critic.optimizer.step()
+
+        if timestep % self.target_update_freq == 0:
+            self.target_actor_critic.load_state_dict(self.actor_critic.state_dict())

@@ -39,17 +39,17 @@ ACTOR_ALPHA: float = 0.2
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
-EPS_DECAY: float = 0.9995
+EPS_DECAY: float = 0.9999
 
-REPLAY_BUFFER_SIZE: int = 1000000
-TARGET_UPDATE_FREQ: int = 10
+REPLAY_BUFFER_SIZE: int = 10000000
+TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 100
+N_ENVS: int = 1000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 450
+N_STEPS: int = 100
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -185,7 +185,7 @@ def main():
         ),
     )
 
-    action_scale = .25
+    action_scale = .1
     dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
@@ -222,7 +222,7 @@ def main():
                     dist_thresh=dist_thresh,
                     target_update_freq=TARGET_UPDATE_FREQ,
                     replay_buffer_size=REPLAY_BUFFER_SIZE,
-                    action_mode=ActionMode.DOF_TARGET
+                    action_mode=ActionMode.DOF_POSITION
                 )
                 run_experiment(
                     env=env,

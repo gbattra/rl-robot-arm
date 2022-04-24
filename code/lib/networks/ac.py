@@ -28,10 +28,11 @@ class ActorCriticNetwork(nn.Module):
         self.network = nn.Sequential(
             nn.Linear(obs_size, dim_size),
             nn.ReLU(),
-            nn.Linear(dim_size, dim_size // 2),
-            nn.ReLU())
-        self.value_layer = nn.Linear(dim_size // 2, 1)
-        self.policy_layer = nn.Linear(dim_size // 2, self.action_size)
+            # nn.Linear(dim_size, dim_size // 2),
+            # nn.ReLU()
+        )
+        self.value_layer = nn.Linear(dim_size, self.n_joints)
+        self.policy_layer = nn.Linear(dim_size, self.action_size)
 
         self.loss_fn = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)

@@ -15,7 +15,7 @@ from lib.agents.ac_agent import ActorCriticAgent
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
-from lib.envs.approach_env import ApproachEnvContinuous
+from lib.envs.approach_env import ApproachEnvContinuous, ApproachEnvDiscrete
 from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
@@ -32,13 +32,13 @@ from lib.structs.approach_task import (
 )
 from lib.structs.experiment import Experiment
 
-GAMMA: float = 0.99
+GAMMA: float = .99
 LEARNING_RATE: float = 0.001
 ACTOR_ALPHA: float = 0.2
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
-EPS_DECAY: float = 0.9995
+EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10
@@ -48,7 +48,7 @@ N_ENVS: int = 100
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
-N_STEPS: int = 450
+N_STEPS: int = 200
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -76,7 +76,7 @@ def run_experiment(
             env.arm_n_dofs,
             env.n_envs,
             experiment.n_timesteps,
-            torch.float32)
+            torch.long)
     else:
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
@@ -183,7 +183,7 @@ def main():
         ),
     )
 
-    action_scale = .25
+    action_scale = .1
     dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
@@ -195,13 +195,13 @@ def main():
         action_mode=ActionMode.DOF_TARGET
     )
 
-    env = ApproachEnvContinuous(sim_config, task_config, gym)
+    env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
     agent_id = 0
     dim = 64
-    batch_size = N_ENVS
+    batch_size = 150
     for dist_thresh in [0.25, 0.15]:
-        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+        for buffer_type in [BufferType.HER, BufferType.STANDARD, BufferType.WINNING]:
             for randomize in [True, False]:
                 experiment = Experiment(
                     n_epochs=N_EPOCHS,
@@ -220,7 +220,7 @@ def main():
                     dist_thresh=dist_thresh,
                     target_update_freq=TARGET_UPDATE_FREQ,
                     replay_buffer_size=REPLAY_BUFFER_SIZE,
-                    action_mode=ActionMode.DOF_TARGET
+                    action_mode=ActionMode.DOF_POSITION
                 )
                 run_experiment(
                     env=env,
