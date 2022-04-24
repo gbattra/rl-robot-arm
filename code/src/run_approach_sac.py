@@ -9,6 +9,8 @@ Box Approach env adhering to Elegant RL env for multiprocessing
 import math
 from isaacgym import gymapi, gymutil
 from typing import Callable
+
+import torch
 from lib.agents.sac_agent import SacAgent
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
@@ -33,6 +35,7 @@ from lib.structs.experiment import Experiment
 
 GAMMA: float = 0.99
 LEARNING_RATE: float = 0.001
+ACTOR_ALPHA: float = 0.2
 
 EPS_START: float = 1.0
 EPS_END: float = 0.05
@@ -68,7 +71,13 @@ def run_experiment(
     if experiment.buffer_type == BufferType.STANDARD:
         buffer: ReplayBuffer = ReplayBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs)
     elif experiment.buffer_type == BufferType.HER:
-        buffer: ReplayBuffer = HerBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, experiment.n_timesteps)
+        buffer: ReplayBuffer = HerBuffer(
+            experiment.replay_buffer_size,
+            env.observation_size,
+            env.arm_n_dofs,
+            env.n_envs,
+            experiment.n_timesteps,
+            torch.float32)
     else:
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
@@ -80,9 +89,9 @@ def run_experiment(
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
+        alpha=ACTOR_ALPHA,
         actor_lr=experiment.lr,
         critic_lr=experiment.lr,
-        value_lr=experiment.lr,
         gamma=GAMMA,
         epsilon=epsilon,
         target_update_freq=TARGET_UPDATE_FREQ,
@@ -176,7 +185,7 @@ def main():
         ),
     )
 
-    action_scale = .25
+    action_scale = .1
     dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
@@ -185,7 +194,7 @@ def main():
         distance_threshold=dist_thresh,
         episode_length=N_STEPS,
         randomize=False,
-        action_mode=ActionMode.DOF_POSITION
+        action_mode=ActionMode.DOF_TARGET
     )
 
     env = ApproachEnvContinuous(sim_config, task_config, gym)
@@ -214,7 +223,7 @@ def main():
                     dist_thresh=dist_thresh,
                     target_update_freq=TARGET_UPDATE_FREQ,
                     replay_buffer_size=REPLAY_BUFFER_SIZE,
-                    action_mode=ActionMode.DOF_POSITION
+                    action_mode=ActionMode.DOF_TARGET
                 )
                 run_experiment(
                     env=env,

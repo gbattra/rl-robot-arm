@@ -69,8 +69,8 @@ class Agent:
 
                     self.remember(s, a, s_prime, r, done)
 
-                    # loss = self.optimize(gt)
-                    analytics(r, done, 0, p, e, t)
+                    loss = self.optimize(gt)
+                    analytics(r, done, loss, p, e, t)
 
                     # reset envs which have finished task
                     env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])

@@ -421,7 +421,7 @@ class ApproachEnvContinuous(ApproachEnv):
                 self.sim, gymtorch.unwrap_tensor(self.dof_targets)
             )
         else:
-            targets = self.dof_positions[:, :] + (actions * self.action_scale)
+            targets = self.dof_positions + (actions * self.action_scale)
             targets = torch_utils.tensor_clamp(
                 targets,
                 self.arm_lower_limits,

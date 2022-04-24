@@ -85,16 +85,16 @@ class ActorNetwork(nn.Module):
         
         return mu, sigma
 
-    def sample(self, x, noise: bool = False):
+    def sample(self, x, reparam: bool = False):
         mu, sigma = self.forward(x)
         probs = Normal(mu, sigma)
 
-        if noise:
+        if reparam:
             actions = probs.rsample()
         else:
             actions = probs.sample()
         
         action = torch.tanh(actions)
-        log_probs = probs.log_prob(actions)
+        log_probs = probs.log_prob(action)
 
         return actions, log_probs

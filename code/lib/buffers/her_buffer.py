@@ -17,12 +17,13 @@ class HerBuffer(ReplayBuffer):
             state_size: int,
             action_size: int,
             n_envs: int,
-            n_steps: int) -> None:
+            n_steps: int,
+            action_dtype: torch.dtype = torch.long) -> None:
         super().__init__(size, state_size, action_size, n_envs)
         self.n_steps = n_steps
-
+        self.action_dtype = action_dtype
         self.traj_states = torch.zeros((self.n_envs, self.n_steps, self.state_size), device=self.device)
-        self.traj_actions = torch.zeros((self.n_envs, self.n_steps, self.action_size), device=self.device).long()
+        self.traj_actions = torch.zeros((self.n_envs, self.n_steps, self.action_size), device=self.device).to(action_dtype)
         self.traj_next_states = torch.zeros((self.n_envs, self.n_steps, self.state_size), device=self.device)
         self.traj_rwds = torch.zeros((self.n_envs, self.n_steps, 1), device=self.device)
         self.traj_dones = torch.zeros((self.n_envs, self.n_steps, 1), device=self.device).bool()
@@ -61,7 +62,8 @@ class HerBuffer(ReplayBuffer):
             self.state_size,
             self.action_size,
             self.n_steps,
-            self.device)
+            self.device,
+            self.action_dtype)
         all_traj_states, all_traj_actions, all_traj_next_states, all_traj_dones, all_traj_rwds = results
 
         super().add(all_traj_states, all_traj_actions, all_traj_next_states, all_traj_dones, all_traj_rwds)
@@ -80,13 +82,14 @@ def flush_dones(
             state_size: int,
             action_size: int,
             n_steps: int,
-            device: str) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+            device: str,
+            action_dtype: torch.dtype) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         flush_envs = env_idxs[dones[:, 0] + (env_traj_steps >= n_steps)]
         total_steps = int(env_traj_steps[flush_envs].sum().item())
         
         all_traj_states = torch.zeros((total_steps, state_size), device=device)
         all_traj_next_states = torch.zeros((total_steps, state_size), device=device)
-        all_traj_actions = torch.zeros((total_steps, action_size), device=device, dtype=torch.long)
+        all_traj_actions = torch.zeros((total_steps, action_size), device=device, dtype=action_dtype)
         all_traj_dones = torch.zeros((total_steps, 1), device=device, dtype=torch.bool)
         all_traj_rwds = torch.zeros((total_steps, 1), device=device)
 
