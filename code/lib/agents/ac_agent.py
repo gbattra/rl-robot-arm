@@ -25,7 +25,6 @@ class ActorCriticAgent(Agent):
             action_scale: float,
             lr: float,
             gamma: float,
-            epsilon: Callable,
             target_update_freq: int,
             save_path: str
         ) -> None:
@@ -36,7 +35,6 @@ class ActorCriticAgent(Agent):
         self.lr = lr
         self.action_scale = action_scale
         self.gamma = gamma
-        self.epsilon = epsilon
         self.obs_size = obs_size
         self.n_joints = n_joints
         self.n_actions = n_actions
@@ -55,14 +53,6 @@ class ActorCriticAgent(Agent):
             _, policy = self.actor_critic(state)
             action_probs = torch.distributions.Categorical(policy)
             actions = action_probs.sample()
-
-            randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
-            # get random action indices in shape: [N x n_joints]
-            random_actions = torch.randint(
-                0, self.n_actions, (state.shape[0], self.n_joints), device=self.device
-            )
-            # get max a_vals per joint: [N x n_joints]
-            actions[randoms] = random_actions[randoms]
         
         return actions
 

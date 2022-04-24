@@ -41,10 +41,10 @@ EPS_END: float = 0.05
 EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 1000000
-TARGET_UPDATE_FREQ: int = 10
+TARGET_UPDATE_FREQ: int = 100
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 100
+N_ENVS: int = 4000
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -62,10 +62,6 @@ def run_experiment(
     env.action_scale = experiment.action_scale
     env.distance_threshold = experiment.dist_thresh
     env.action_mode = experiment.action_mode
-    
-    epsilon: Callable[[int], float] = lambda t: max(
-        EPS_END, EPS_START * (experiment.eps_decay**t)
-    )
 
     if experiment.buffer_type == BufferType.STANDARD:
         buffer: ReplayBuffer = ReplayBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs)
@@ -91,7 +87,6 @@ def run_experiment(
         action_scale=experiment.action_scale,
         lr=experiment.lr,
         gamma=GAMMA,
-        epsilon=epsilon,
         target_update_freq=experiment.target_update_freq,
         save_path=f'models/ac/ac_{experiment.agent_id}.pth'
     )
@@ -198,12 +193,13 @@ def main():
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
     agent_id = 0
-    dim = 64
-    batch_size = 150
+    dim = 64*2*2
+    batch_size = N_ENVS
     for dist_thresh in [0.25, 0.15]:
-        for buffer_type in [BufferType.HER, BufferType.STANDARD, BufferType.WINNING]:
-            for randomize in [True, False]:
+        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+            for randomize in [False, True]:
                 experiment = Experiment(
+                    algo_name='Actor Critic',
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,
@@ -211,7 +207,7 @@ def main():
                     agent_id=agent_id,
                     n_envs=N_ENVS,
                     batch_size=batch_size,
-                    lr=0.001,
+                    lr=0.0001,
                     buffer_type=buffer_type,
                     eps_decay=EPS_DECAY,
                     randomize=randomize,

@@ -202,7 +202,7 @@ class ApproachEnv:
             conf_signs = (torch.randint(0, 2, (self.n_envs, self.arm_n_dofs), device=self.device) * 2.) - 1.
             arm_confs: torch.Tensor = torch.rand((self.n_envs, self.arm_n_dofs), device=self.device)
             arm_confs = torch_utils.tensor_clamp(
-                arm_confs if not self.randomize else arm_confs * (2 * math.pi) * conf_signs,
+                arm_confs * (2 * math.pi) * conf_signs,
                 self.arm_lower_limits,
                 self.arm_upper_limits,
             )
@@ -238,11 +238,10 @@ class ApproachEnv:
         self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
 
     def compute_observations(self) -> torch.Tensor:
+        arm_state = self.dof_positions if self.action_mode == ActionMode.DOF_POSITION else self.dof_targets
         state: torch.Tensor = torch.cat(
             (
-                # self.dof_positions,
-                # self.dof_velocities,
-                self.dof_targets,
+                arm_state,
                 self.hand_poses[:, 0:3],
                 self.box_poses[:, 0:3],
             ),
@@ -323,8 +322,8 @@ def compute_rewards(
     # h_distances: torch.Tensor = torch.norm(
     #     hand_poses[:, 0:3] - h_targets[:, 0:3], p=2, dim=-1
     # )
-    # rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
-    rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
+    rwds: torch.Tensor = torch.zeros((n_envs, 1), device=device)
+    # rwds: torch.Tensor = torch.ones((n_envs, 1), device=device) * -0.005
     # lf_close: torch.Tensor = lf_distances.le(0.2)
     # lf_closer = lf_distances.le(0.1)
     # lf_closest = lf_distances.le(distance_threshold)

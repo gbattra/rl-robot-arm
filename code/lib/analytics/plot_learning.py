@@ -27,7 +27,7 @@ class Analytics:
     debug: bool
 
     def __str__(self) -> str:
-        return f'SAC Agent {self.experiment.agent_id}'
+        return f'{self.experiment.algo_name} Agent {self.experiment.agent_id}'
 
 
 def initialize_analytics(
@@ -100,7 +100,7 @@ def plot_learning(
     plt.show(block=False)
 
     if episode == analytics.experiment.n_episodes - 1 and timestep == analytics.experiment.n_timesteps - 1:
-        plt.savefig(f'figs/debug/dqn_{time()}.png')
+        plt.savefig(f'figs/debug/{analytics.experiment.algo_name}_{time()}.png')
 
 
 def save_analytics(analytics: Analytics, root: str) -> None:
@@ -116,4 +116,4 @@ def save_analytics(analytics: Analytics, root: str) -> None:
 
     plt.legend()
 
-    plt.savefig(f'figs/{root}/DQN_{analytics.experiment.agent_id}_{time()}.png')
+    plt.savefig(f'figs/{root}/{analytics.experiment.algo_name}_{analytics.experiment.agent_id}_{time()}.png')

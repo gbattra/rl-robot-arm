@@ -13,6 +13,7 @@ from lib.structs.approach_task import ActionMode
 
 @dataclass
 class Experiment:
+    algo_name: str
     gamma: float
     dim_size: int
     agent_id: int
