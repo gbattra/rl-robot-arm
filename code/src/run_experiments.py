@@ -40,7 +40,6 @@ from torch import nn
 from lib.agents.dqn_agent import DQNAgent
 
 GAMMA: float = .99
-LEARNING_RATE: float = 0.001
 ACTOR_ALPHA: float = 0.2
 
 EPS_START: float = 1.0
@@ -50,11 +49,10 @@ EPS_DECAY: float = 0.9999
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 
-N_ENVS: int = 1
-N_EPOCHS: int = 2
-N_EPISODES: int = 5
-N_STEPS: int = 10
-
+N_ENVS: int = 1000
+N_EPOCHS: int = 4
+N_EPISODES: int = 100
+N_STEPS: int = 200
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
@@ -221,37 +219,38 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    dim = 64*2*2
     batch_size = N_ENVS
     for algo in [Algorithm.DQN, Algorithm.AC]:
         agent_id = 0
-        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-            for randomize in [False, True]:
-                experiment = Experiment(
-                    algo_name=algo.value,
-                    n_epochs=N_EPOCHS,
-                    n_episodes=N_EPISODES,
-                    n_timesteps=N_STEPS,
-                    dim_size=dim,
-                    agent_id=agent_id,
-                    n_envs=N_ENVS,
-                    batch_size=batch_size,
-                    lr=0.0001,
-                    buffer_type=buffer_type,
-                    eps_decay=EPS_DECAY,
-                    randomize=randomize,
-                    gamma=GAMMA,
-                    action_scale=action_scale,
-                    dist_thresh=dist_thresh,
-                    target_update_freq=TARGET_UPDATE_FREQ,
-                    replay_buffer_size=REPLAY_BUFFER_SIZE,
-                    action_mode=ActionMode.DOF_POSITION
-                )
-                run_experiment(
-                    env=env,
-                    experiment=experiment,
-                    debug=args.debug)
-                agent_id += 1
+        for batch_size in [N_ENVS // 2, N_ENVS]:
+            for dim_size in [64*2*2, 64*2*2*2]:
+                for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+                    for randomize in [False, True]:
+                        experiment = Experiment(
+                            algo_name=algo.value,
+                            n_epochs=N_EPOCHS,
+                            n_episodes=N_EPISODES,
+                            n_timesteps=N_STEPS,
+                            dim_size=dim_size,
+                            agent_id=agent_id,
+                            n_envs=N_ENVS,
+                            batch_size=batch_size,
+                            lr=0.0001,
+                            buffer_type=buffer_type,
+                            eps_decay=EPS_DECAY,
+                            randomize=randomize,
+                            gamma=GAMMA,
+                            action_scale=action_scale,
+                            dist_thresh=dist_thresh,
+                            target_update_freq=TARGET_UPDATE_FREQ,
+                            replay_buffer_size=REPLAY_BUFFER_SIZE,
+                            action_mode=ActionMode.DOF_POSITION
+                        )
+                        run_experiment(
+                            env=env,
+                            experiment=experiment,
+                            debug=args.debug)
+                        agent_id += 1
 
     env.destroy()
 
