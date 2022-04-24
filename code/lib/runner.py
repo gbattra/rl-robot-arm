@@ -34,11 +34,11 @@ class Runner:
         self.data_dir = f'{self.analytics_dir}/data'
         self.models_dir = f'{self.root}/models'
 
-        os.makedirs(self.root)
-        os.makedirs(self.analytics_dir)
-        os.makedirs(self.figs_dir)
-        os.makedirs(self.data_dir)
-        os.makedirs(self.models_dir)
+        os.makedirs(self.root, exist_ok=True)
+        os.makedirs(self.analytics_dir, exist_ok=True)
+        os.makedirs(self.figs_dir, exist_ok=True)
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.models_dir, exist_ok=True)
 
     
     def run(self) -> Dict:
@@ -54,11 +54,11 @@ class Runner:
                     gt += 1
 
             self.agent.save_checkpoint(
-                f'{self.models_dir}/{self.experiment.algo_name}_{self.experiment.agent_id}_{p}.pth')
-            save_plot(self.anaytics, f'{self.figs_dir}/debug/{p}.png')
+                f'{self.models_dir}/{p}.pth')
+            save_plot(self.analytics, f'{self.figs_dir}/{p}.png')
 
         self.agent.save_checkpoint(
-            f'{self.models_dir}/{self.experiment.algo_name}_{self.experiment.agent_id}_final.pth')
-        save_plot(self.anaytics, f'{self.figs_dir}/debug/final.png')
-        save_data(self.anaytics, f'{self.data_dir}')
+            f'{self.models_dir}/final.pth')
+        save_plot(self.analytics, f'{self.figs_dir}/final.png')
+        save_data(self.analytics, f'{self.data_dir}')
             

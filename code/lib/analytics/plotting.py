@@ -58,16 +58,15 @@ def plot_learning(
     plt.pause(0.1)
     plt.show(block=False)
 
-    if episode == analytics.experiment.n_episodes - 1 and timestep == analytics.experiment.n_timesteps - 1:
-        plt.savefig(f'figs/debug/{analytics.experiment.algo_name}_{time()}.png')
-
 
 def save_plot(analytics: Analytics, filename: str) -> None:
-    plt.figure(2, figsize=(9, 10))
+    # plt.figure(2, figsize=(9, 10))
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
+    epoch_losses = analytics.epoch_losses.cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
+    plt.plot(epoch_losses[0] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
     desc = str(analytics.experiment)
     plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')

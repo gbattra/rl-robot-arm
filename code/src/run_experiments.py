@@ -1,8 +1,8 @@
 # Greg Attra
-# 04.20.22
+# 04.24.22
 
 '''
-Run approach problem with AC methods
+Run a bunch of experiments
 '''
 
 
@@ -12,6 +12,7 @@ from typing import Callable
 
 import torch
 from lib.agents.ac_agent import ActorCriticAgent
+from lib.agents.agent import Agent
 from lib.analytics.analytics import Analytics, initialize_analytics
 from lib.analytics.plotting import plot_learning
 from lib.buffers.her_buffer import HerBuffer
@@ -19,6 +20,7 @@ from lib.buffers.win_buffer import WinBuffer
 from lib.envs.approach_env import ApproachEnvContinuous, ApproachEnvDiscrete
 from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.runner import Runner
+from lib.structs.algorithm import Algorithm
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
@@ -33,6 +35,9 @@ from lib.structs.approach_task import (
     ApproachTaskConfig,
 )
 from lib.structs.experiment import Experiment
+from lib.networks.dqn import Dqn
+from torch import nn
+from lib.agents.dqn_agent import DQNAgent
 
 GAMMA: float = .99
 LEARNING_RATE: float = 0.001
@@ -45,10 +50,10 @@ EPS_DECAY: float = 0.9999
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 
-N_ENVS: int = 1000
-N_EPOCHS: int = 4
-N_EPISODES: int = 100
-N_STEPS: int = 200
+N_ENVS: int = 1
+N_EPOCHS: int = 2
+N_EPISODES: int = 5
+N_STEPS: int = 10
 
 
 PLOT_FREQ: int = N_STEPS
@@ -77,18 +82,42 @@ def run_experiment(
     else:
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
+    if experiment.algo_name == Algorithm.AC:
+        agent: Agent = ActorCriticAgent(
+            buffer=buffer,
+            obs_size=env.observation_size,
+            n_actions=len(ApproachTaskActions),
+            n_joints=env.arm_n_dofs,
+            network_dim_size=experiment.dim_size,
+            batch_size=experiment.batch_size,
+            action_scale=experiment.action_scale,
+            alpha=1e-3,
+            lr=experiment.lr,
+            gamma=GAMMA,
+            target_update_freq=experiment.target_update_freq
+        )
+    else:
+        epsilon: Callable[[int], float] = lambda t: max(
+            EPS_END, EPS_START * (experiment.eps_decay**t)
+        )
+        
+        policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
+        target_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
+        optimizer = torch.optim.Adam(policy_net.parameters(), lr=experiment.lr)
+        loss_fn = nn.MSELoss()
 
-    agent: ActorCriticAgent = ActorCriticAgent(
+        agent: Agent = DQNAgent(
+        agent_id=experiment.agent_id,
+        n_dofs=env.arm_n_dofs,
+        n_dof_actions=len(ApproachTaskActions),
         buffer=buffer,
-        obs_size=env.observation_size,
-        n_actions=len(ApproachTaskActions),
-        n_joints=env.arm_n_dofs,
-        network_dim_size=experiment.dim_size,
+        policy_net=policy_net,
+        target_net=target_net,
+        loss_fn=loss_fn,
+        optimizer=optimizer,
+        epsilon=epsilon,
+        gamma=experiment.gamma,
         batch_size=experiment.batch_size,
-        action_scale=experiment.action_scale,
-        alpha=1e-3,
-        lr=experiment.lr,
-        gamma=GAMMA,
         target_update_freq=experiment.target_update_freq
     )
 
@@ -192,14 +221,14 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    agent_id = 0
     dim = 64*2*2
     batch_size = N_ENVS
-    for dist_thresh in [0.25, 0.15]:
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        agent_id = 0
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [False, True]:
                 experiment = Experiment(
-                    algo_name='actor_critic',
+                    algo_name=algo.value,
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,
