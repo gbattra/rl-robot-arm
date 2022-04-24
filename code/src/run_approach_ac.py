@@ -48,7 +48,7 @@ BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
 N_ENVS: int = 4000
 
-N_EPOCHS: int = 3
+N_EPOCHS: int = 4
 N_EPISODES: int = 100
 N_STEPS: int = 200
 
@@ -100,12 +100,12 @@ def run_experiment(
         debug=debug
     )
 
-    runner: Runner = Runner()
-    runner.run(
-        experiment=experiment,
+    runner: Runner = Runner(
         env=env,
         agent=agent,
-        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+        analytics=analytics,
+        experiment=experiment)
+    runner.run()
 
 
 def main():
@@ -200,7 +200,7 @@ def main():
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [False, True]:
                 experiment = Experiment(
-                    algo_name='Actor Critic',
+                    algo_name='actor_critic',
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,

@@ -106,12 +106,12 @@ def run_experiment(
         debug=debug
     )
 
-    runner: Runner = Runner()
-    runner.run(
-        experiment=experiment,
+    runner: Runner = Runner(
         env=env,
         agent=agent,
-        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+        analytics=analytics,
+        experiment=experiment)
+    runner.run()
 
 
 def main():
@@ -206,6 +206,7 @@ def main():
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [True, False]:
                 experiment = Experiment(
+                    algo_name='sac',
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,

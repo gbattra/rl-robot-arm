@@ -108,12 +108,12 @@ def run_experiment(
         debug=debug
     )
 
-    runner: Runner = Runner()
-    runner.run(
-        experiment=experiment,
+    runner: Runner = Runner(
         env=env,
         agent=agent,
-        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
+        analytics=analytics,
+        experiment=experiment)
+    runner.run()
 
 
 def main():
@@ -209,6 +209,7 @@ def main():
         for buffer_type in [BufferType.WINNING, BufferType.STANDARD, BufferType.HER]:
             for randomize in [False, True]:
                 experiment = Experiment(
+                    algo_name='dqn',
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,

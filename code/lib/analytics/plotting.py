@@ -6,6 +6,7 @@ Plot stuff
 '''
 
 from time import time
+import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
@@ -30,9 +31,6 @@ def plot_learning(
     if not analytics.debug:
         return
 
-    if cur_ep > 1 and cur_step % analytics.save_freq == 0:
-        save_analytics(analytics, 'debug')
-
     # plt.plot(epoch_episodes[e, :episode] / analytics.env_timesteps.shape[0])
     # plt.plot(analytics.epoch_episode_lengths[:epoch].mean().detach().numpy(), label='Epoch Avg Episode Length')
 
@@ -47,7 +45,7 @@ def plot_learning(
     epoch_losses = analytics.epoch_losses.cpu().numpy()
 
     plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
-    # plt.plot(epoch_losses[0, :cur_ep] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
+    plt.plot(epoch_losses[0, :cur_ep] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
     # plt.plot(epoch_rewards[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
 
     desc = str(analytics.experiment)
@@ -59,6 +57,9 @@ def plot_learning(
 
     plt.pause(0.1)
     plt.show(block=False)
+
+    if episode == analytics.experiment.n_episodes - 1 and timestep == analytics.experiment.n_timesteps - 1:
+        plt.savefig(f'figs/debug/{analytics.experiment.algo_name}_{time()}.png')
 
 
 def save_plot(analytics: Analytics, filename: str) -> None:
@@ -78,5 +79,5 @@ def save_plot(analytics: Analytics, filename: str) -> None:
 
 
 def save_data(analytics: Analytics, filepath: str):
-    pass
-
+    total_rewards = analytics.epoch_rewards.cpu().numpy()
+    np.save(f'{filepath}/total_rewards', total_rewards)
