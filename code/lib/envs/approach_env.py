@@ -178,7 +178,7 @@ class ApproachEnv:
 
         # task info
         self.action_scale = task_config.action_scale
-        self.observation_size = self.arm_n_dofs + 3 + 3
+        self.observation_size = self.arm_n_dofs + self.arm_n_dofs + 3 + 3
         self.action_size = len(ApproachTaskActions) * self.arm_n_dofs
         self.distance_threshold = task_config.distance_threshold
 
@@ -238,10 +238,10 @@ class ApproachEnv:
         self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
 
     def compute_observations(self) -> torch.Tensor:
-        arm_state = self.dof_positions if self.action_mode == ActionMode.DOF_POSITION else self.dof_targets
         state: torch.Tensor = torch.cat(
             (
-                arm_state,
+                self.dof_positions,
+                self.dof_targets,
                 self.hand_poses[:, 0:3],
                 self.box_poses[:, 0:3],
             ),

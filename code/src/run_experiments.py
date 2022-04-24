@@ -225,32 +225,33 @@ def main():
         for batch_size in [N_ENVS // 2, N_ENVS]:
             for dim_size in [64*2*2, 64*2*2*2]:
                 for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-                    for randomize in [False, True]:
-                        experiment = Experiment(
-                            algo_name=algo.value,
-                            n_epochs=N_EPOCHS,
-                            n_episodes=N_EPISODES,
-                            n_timesteps=N_STEPS,
-                            dim_size=dim_size,
-                            agent_id=agent_id,
-                            n_envs=N_ENVS,
-                            batch_size=batch_size,
-                            lr=0.0001,
-                            buffer_type=buffer_type,
-                            eps_decay=EPS_DECAY,
-                            randomize=randomize,
-                            gamma=GAMMA,
-                            action_scale=action_scale,
-                            dist_thresh=dist_thresh,
-                            target_update_freq=TARGET_UPDATE_FREQ,
-                            replay_buffer_size=REPLAY_BUFFER_SIZE,
-                            action_mode=ActionMode.DOF_POSITION
-                        )
-                        run_experiment(
-                            env=env,
-                            experiment=experiment,
-                            debug=args.debug)
-                        agent_id += 1
+                    for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
+                        for randomize in [False, True]:
+                            experiment = Experiment(
+                                algo_name=algo.value,
+                                n_epochs=N_EPOCHS,
+                                n_episodes=N_EPISODES,
+                                n_timesteps=N_STEPS,
+                                dim_size=dim_size,
+                                agent_id=agent_id,
+                                n_envs=N_ENVS,
+                                batch_size=batch_size,
+                                lr=0.0001,
+                                buffer_type=buffer_type,
+                                eps_decay=EPS_DECAY,
+                                randomize=randomize,
+                                gamma=GAMMA,
+                                action_scale=action_scale,
+                                dist_thresh=dist_thresh,
+                                target_update_freq=TARGET_UPDATE_FREQ,
+                                replay_buffer_size=REPLAY_BUFFER_SIZE,
+                                action_mode=action_mode
+                            )
+                            run_experiment(
+                                env=env,
+                                experiment=experiment,
+                                debug=args.debug)
+                            agent_id += 1
 
     env.destroy()
 
