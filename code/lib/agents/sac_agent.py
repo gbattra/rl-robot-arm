@@ -71,31 +71,35 @@ class SacAgent(Agent):
 
         samples = self.buffer.sample(self.batch_size)
         states, actions, next_states, rewards, dones = samples
-        
-        policy_actions, policy_log_probs = self.actor_net.sample(states)
 
-        critic_states = torch.cat((states, policy_actions), dim=1)
+        # optimize value network
+        value_actions, value_log_probs = self.actor_net.sample(states)
+        critic_states = torch.cat((states, value_actions), dim=1)
         critic_1_values = self.critic_1_net(critic_states)
         critic_2_values = self.critic_2_net(critic_states)
         critic_values = torch.min(critic_1_values, critic_2_values)
 
-        # optimize value network
         state_values = self.b_value_net(states)
         next_state_values = self.t_value_net(next_states)
         next_state_values[dones] = 0.0
 
         self.b_value_net.optimizer.zero_grad()
-        target_state_values = critic_values - policy_log_probs
+        target_state_values = critic_values - value_log_probs
         value_loss = self.b_value_net.loss_fn(state_values, target_state_values)
         value_loss.backward()
         self.b_value_net.optimizer.step()
 
         # optimize actor network
+        actor_actions, actor_log_probs = self.actor_net.sample(states, noise=True)
+        critic_states = torch.cat((states, actor_actions), dim=1)
+        critic_1_values = self.critic_1_net(critic_states)
+        critic_2_values = self.critic_2_net(critic_states)
+        critic_values = torch.min(critic_1_values, critic_2_values)
+
         self.actor_net.optimizer.zero_grad()
-        actor_loss = policy_log_probs - critic_values
+        actor_loss = torch.mean(actor_log_probs - critic_values)
         actor_loss.backward()
         self.actor_net.optimizer.step()
-
 
         # optimize critic network
         self.critic_1_net.optimizer.zero_grad()
@@ -105,10 +109,9 @@ class SacAgent(Agent):
         critic_old_states = torch.cat((states, actions), dim=1)
         critic_1_old_values = self.critic_1_net(critic_old_states)
         critic_2_old_values = self.critic_2_net(critic_old_states)
-        critic_old_values = torch.min(critic_1_old_values, critic_2_old_values)
 
-        critic_1_loss = self.critic_1_net.loss_fn(critic_1_old_values)
-        critic_2_loss = self.critic_2_net.loss_fn(critic_2_old_values)
+        critic_1_loss = self.critic_1_net.loss_fn(critic_1_old_values, target_critic_value)
+        critic_2_loss = self.critic_2_net.loss_fn(critic_2_old_values, target_critic_value)
         critic_loss = critic_1_loss + critic_2_loss
         critic_loss.backward()
 
