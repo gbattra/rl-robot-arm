@@ -34,28 +34,6 @@ class CriticNetwork(nn.Module):
         return self.network(x)
 
 
-class ValueNetwork(nn.Module):
-    def __init__(self, obs_size: int, dim_size: int, lr: float):
-        super().__init__()
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-        self.network = nn.Sequential(
-            nn.Linear(obs_size, dim_size),
-            nn.ReLU(),
-            nn.Linear(dim_size, dim_size),
-            nn.ReLU(),
-            nn.Linear(dim_size, 1)
-        )
-        
-        # self.network.apply(init_weights)
-
-        self.loss_fn = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-
-    def forward(self, x):
-        return self.network(x)
-
-
 class ActorNetwork(nn.Module):
     def __init__(self, obs_size: int, action_size: int, dim_size: int, action_scale: float, lr: float):
         super().__init__()

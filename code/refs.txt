@@ -4,4 +4,7 @@
 * torch documentation
 * https://sparrow.dev/pytorch-one-hot-encoding/
 * https://youtu.be/ioidsRlf79o
-* 
+* https://spinningup.openai.com/en/latest/algorithms/sac.html
+* SAC paper
+* DQN paper
+* NVIDIA Isaac Gym paper

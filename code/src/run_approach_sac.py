@@ -41,7 +41,7 @@ EPS_START: float = 1.0
 EPS_END: float = 0.05
 EPS_DECAY: float = 0.999
 
-REPLAY_BUFFER_SIZE: int = 10000000
+REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 10
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
@@ -185,7 +185,7 @@ def main():
         ),
     )
 
-    action_scale = .1
+    action_scale = 1.
     dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
@@ -204,7 +204,7 @@ def main():
     batch_size = N_ENVS
     buffer_type = BufferType.WINNING
     for dist_thresh in [0.25, 0.15]:
-        for buffer_type in [BufferType.WINNING, BufferType.STANDARD, BufferType.HER]:
+        for buffer_type in [BufferType.HER, BufferType.WINNING, BufferType.STANDARD]:
             for randomize in [False, True]:
                 experiment = Experiment(
                     n_epochs=N_EPOCHS,

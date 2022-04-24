@@ -10,7 +10,7 @@ import torch
 
 from lib.agents.agent import Agent
 from lib.buffers.buffer import ReplayBuffer
-from lib.networks.sac import ActorNetwork, CriticNetwork, ValueNetwork
+from lib.networks.sac import ActorNetwork, CriticNetwork
 
 
 class SacAgent(Agent):
@@ -61,7 +61,7 @@ class SacAgent(Agent):
                 actions = torch.rand((state.shape[0], self.action_size), device=self.device) \
                     * torch.randint(-1, 2, (state.shape[0], self.action_size), device=self.device)
             else:
-                actions, _ = self.actor_net.sample(state)
+                actions, _ = self.actor.sample(state)
         
         return actions
 
@@ -86,7 +86,7 @@ class SacAgent(Agent):
         critic_next_states = torch.cat((next_states, next_actions), dim=1)
         next_state_values = self.target_critic(critic_next_states)
         next_state_values[dones] = 0.0
-        entropies = self.alpha * next_log_probs
+        entropies = self.alpha * next_log_probs.sum(dim=1, keepdim=True)
         target_values = rewards + (self.gamma * (next_state_values - entropies))
 
         critic_states = torch.cat((states, actions), dim=1)
@@ -100,10 +100,10 @@ class SacAgent(Agent):
         # actor loss
         reparam_actions, reparam_log_probs = self.actor.sample(states, reparam=True)
         reparam_critic_states = torch.cat((states, reparam_actions), dim=1)
-        reparam_critic_values = self.critic_net(reparam_critic_states)
-        reparam_entropies = self.alpha * reparam_log_probs
+        reparam_critic_values = self.behavior_critic(reparam_critic_states)
+        reparam_entropies = self.alpha * reparam_log_probs.sum(dim=1, keepdim=True)
         
-        actor_loss = (1./self.batch_size) * (reparam_critic_values - reparam_entropies).sum(dim=1)
+        actor_loss = (1./self.batch_size) * (reparam_critic_values - reparam_entropies).sum()
         self.actor.optimizer.zero_grad()
         actor_loss.backward()
         self.actor.optimizer.step()
