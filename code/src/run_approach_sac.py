@@ -7,20 +7,15 @@ Box Approach env adhering to Elegant RL env for multiprocessing
 
 
 import math
-from cv2 import exp
 from isaacgym import gymapi, gymutil
-
-import torch
-
 from typing import Callable
 from lib.agents.sac_agent import SacAgent
 
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
-from lib.envs.approach_env import ApproachEnv
+from lib.envs.approach_env import ApproachEnvContinuous
 from lib.buffers.buffer import BufferType, ReplayBuffer
-from lib.networks.nn import Dqn
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
@@ -29,8 +24,6 @@ from lib.structs.arm_and_box_sim import (
     ViewerConfig,
 )
 
-from torch import nn
-from lib.agents.dqn_agent import DQNAgent
 from lib.structs.approach_task import (
     ActionMode,
     ApproachTaskActions,
@@ -49,7 +42,7 @@ REPLAY_BUFFER_SIZE: int = 10000000
 TARGET_UPDATE_FREQ: int = 10
 BATCH_SIZE: int = 250
 DIM_SIZE: int = 500
-N_ENVS: int = 4000
+N_ENVS: int = 100
 
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
@@ -59,7 +52,7 @@ PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
-        env: ApproachEnv,
+        env: ApproachEnvContinuous,
         experiment: Experiment,
         debug: bool):
 
@@ -86,10 +79,11 @@ def run_experiment(
         action_size=env.arm_n_dofs,
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
+        action_scale=experiment.action_scale,
         actor_lr=experiment.lr,
         critic_lr=experiment.lr,
         value_lr=experiment.lr,
-        gamma=float,
+        gamma=GAMMA,
         epsilon=epsilon,
         target_update_freq=TARGET_UPDATE_FREQ,
         save_path=f'models/sac/sac_{experiment.agent_id}.pth'
@@ -182,7 +176,7 @@ def main():
         ),
     )
 
-    action_scale = 0.1
+    action_scale = .25
     dist_thresh = 0.2
 
     task_config: ApproachTaskConfig = ApproachTaskConfig(
@@ -194,11 +188,10 @@ def main():
         action_mode=ActionMode.DOF_POSITION
     )
 
-    env = ApproachEnv(sim_config, task_config, gym)
+    env = ApproachEnvContinuous(sim_config, task_config, gym)
 
     agent_id = 0
     dim = 64
-    two_layers = True
     batch_size = N_ENVS
     buffer_type = BufferType.WINNING
     for dist_thresh in [0.25, 0.15]:
@@ -209,7 +202,6 @@ def main():
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,
                     dim_size=dim,
-                    two_layers=two_layers,
                     agent_id=agent_id,
                     n_envs=N_ENVS,
                     batch_size=batch_size,

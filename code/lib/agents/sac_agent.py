@@ -21,6 +21,7 @@ class SacAgent(Agent):
             action_size: int,
             network_dim_size: int,
             batch_size: int,
+            action_scale: float,
             actor_lr: float,
             critic_lr: float,
             value_lr: float,
@@ -33,26 +34,32 @@ class SacAgent(Agent):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.buffer = buffer
-        self.actor_net = ActorNetwork(obs_size, action_size, network_dim_size, actor_lr)
-        self.critic_1_net = CriticNetwork(obs_size, action_size, network_dim_size, critic_lr)
-        self.critic_2_net = CriticNetwork(obs_size, action_size, network_dim_size, critic_lr)
-        self.b_value_net = ValueNetwork(obs_size, network_dim_size, value_lr)
-        self.t_value_net = ValueNetwork(obs_size, network_dim_size, value_lr)
+        self.action_scale = action_scale
         self.gamma = gamma
         self.epsilon = epsilon
         self.obs_size = obs_size
         self.action_size = action_size
         self.batch_size = batch_size
-        self.target_update_freq: target_update_freq
+        self.target_update_freq = target_update_freq
+
+        self.actor_net = ActorNetwork(obs_size, action_size, network_dim_size, action_scale, actor_lr).to(self.device)
+        self.critic_1_net = CriticNetwork(obs_size, action_size, network_dim_size, critic_lr).to(self.device)
+        self.critic_2_net = CriticNetwork(obs_size, action_size, network_dim_size, critic_lr).to(self.device)
+        self.b_value_net = ValueNetwork(obs_size, network_dim_size, value_lr).to(self.device)
+        self.t_value_net = ValueNetwork(obs_size, network_dim_size, value_lr).to(self.device)
         
         self.t_value_net.load_state_dict(self.b_value_net.state_dict())
+        
+    def save_checkpoint(self) -> None:
+        torch.save(self.policy_net.state_dict(), self.save_path)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
-        with torch.no_grad():
-            if torch.rand(1) < self.epsilon(t):
-                actions, _ = self.actor_net.sample(state, noise=True)
-            else:
-                actions, _ = self.actor_net.sample(state)
+        actions = torch.rand((state.shape[0], self.action_size), device=self.device)
+        # with torch.no_grad():
+        #     if torch.rand(1) < self.epsilon(t):
+        #         actions, _ = self.actor_net.sample(state, noise=True)
+        #     else:
+        #         actions, _ = self.actor_net.sample(state)
         
         return actions
 
@@ -79,13 +86,15 @@ class SacAgent(Agent):
         critic_2_values = self.critic_2_net(critic_states)
         critic_values = torch.min(critic_1_values, critic_2_values)
 
+        torch.autograd.set_detect_anomaly(True)
         state_values = self.b_value_net(states)
         next_state_values = self.t_value_net(next_states)
-        next_state_values[dones] = 0.0
+        # next_state_values[dones] = 0.0
+        target_state_values = critic_values - value_log_probs.sum(1, keepdim=True)
+
+        value_loss = self.b_value_net.loss_fn(state_values, target_state_values)
 
         self.b_value_net.optimizer.zero_grad()
-        target_state_values = critic_values - value_log_probs
-        value_loss = self.b_value_net.loss_fn(state_values, target_state_values)
         value_loss.backward()
         self.b_value_net.optimizer.step()
 
@@ -97,7 +106,7 @@ class SacAgent(Agent):
         critic_values = torch.min(critic_1_values, critic_2_values)
 
         self.actor_net.optimizer.zero_grad()
-        actor_loss = torch.mean(actor_log_probs - critic_values)
+        actor_loss = torch.mean(actor_log_probs.sum(1, keepdim=True) - critic_values)
         actor_loss.backward()
         self.actor_net.optimizer.step()
 
@@ -118,6 +127,7 @@ class SacAgent(Agent):
         self.critic_1_net.optimizer.step()
         self.critic_2_net.optimizer.step()
 
+        # sync target net weigths
         if timestep % self.target_update_freq:
             self.t_value_net.load_state_dict(self.b_value_net.state_dict()) 
 

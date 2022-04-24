@@ -271,40 +271,6 @@ class ApproachEnv:
         # self.rwd_buf[:, :] = rwds[:, :]
         return rwds
 
-    def step(self, actions: torch.Tensor) \
-            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
-        """
-        Step the sim by taking the chosen actions
-        """
-        self.env_current_steps += 1
-        actions = (actions - 1.0) * self.action_scale
-        
-        if self.action_mode == ActionMode.DOF_TARGET:
-            targets = self.dof_targets + actions
-            targets = torch_utils.tensor_clamp(
-                targets,
-                self.arm_lower_limits,
-                self.arm_upper_limits,
-            )
-            self.dof_targets[:, :] = targets[:, :]
-            self.gym.set_dof_position_target_tensor(
-                self.sim, gymtorch.unwrap_tensor(self.dof_targets)
-            )
-        else:
-            targets = self.dof_positions[:, :] + actions
-            self.dof_positions[:, :] = targets[:,:]
-            self.dof_velocities[:, :] = .0
-            self.dof_targets[:, :] = targets[:, :]
-            self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
-
-        self.tick()
-
-        states = self.compute_observations()
-        rwds = self.compute_rewards()
-        dones = self.compute_dones()
-
-        return states, rwds, dones, {}
-
     def tick(self) -> None:
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
@@ -386,3 +352,90 @@ def compute_rewards(
 
     rwds[lf_distances.le(distance_threshold), :] = 1.
     return rwds
+
+
+class ApproachEnvDiscrete(ApproachEnv):
+    def __init__(self, sim_config: ArmAndBoxSimConfig, task_config: ApproachTaskConfig, gym: gymapi.Gym) -> None:
+        super().__init__(sim_config, task_config, gym)
+    
+    def step(self, actions: torch.Tensor) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
+        """
+        Step the sim by taking the chosen actions
+        """
+        self.env_current_steps += 1
+        actions = (actions - 1.0) * self.action_scale
+        
+        if self.action_mode == ActionMode.DOF_TARGET:
+            targets = self.dof_targets + actions
+            targets = torch_utils.tensor_clamp(
+                targets,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_position_target_tensor(
+                self.sim, gymtorch.unwrap_tensor(self.dof_targets)
+            )
+        else:
+            targets = self.dof_positions[:, :] + actions
+            targets = torch_utils.tensor_clamp(
+                targets,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+            self.dof_positions[:, :] = targets[:,:]
+            self.dof_velocities[:, :] = .0
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
+
+        self.tick()
+
+        states = self.compute_observations()
+        rwds = self.compute_rewards()
+        dones = self.compute_dones()
+
+        return states, rwds, dones, {}
+
+
+class ApproachEnvContinuous(ApproachEnv):
+    def __init__(self, sim_config: ArmAndBoxSimConfig, task_config: ApproachTaskConfig, gym: gymapi.Gym) -> None:
+        super().__init__(sim_config, task_config, gym)
+
+    def step(self, actions: torch.Tensor) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
+        """
+        Step the sim by taking the chosen actions
+        """
+        self.env_current_steps += 1
+        
+        if self.action_mode == ActionMode.DOF_TARGET:
+            targets = self.dof_targets + (actions * self.action_scale)
+            targets = torch_utils.tensor_clamp(
+                targets,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_position_target_tensor(
+                self.sim, gymtorch.unwrap_tensor(self.dof_targets)
+            )
+        else:
+            targets = self.dof_positions[:, :] + (actions * self.action_scale)
+            targets = torch_utils.tensor_clamp(
+                targets,
+                self.arm_lower_limits,
+                self.arm_upper_limits,
+            )
+            self.dof_positions[:, :] = targets[:,:]
+            self.dof_velocities[:, :] = .0
+            self.dof_targets[:, :] = targets[:, :]
+            self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self.dof_states))
+
+        self.tick()
+
+        states = self.compute_observations()
+        rwds = self.compute_rewards()
+        dones = self.compute_dones()
+
+        return states, rwds, dones, {}

@@ -17,7 +17,7 @@ from typing import Callable
 from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
-from lib.envs.approach_env import ApproachEnv
+from lib.envs.approach_env import ApproachEnvDiscrete
 from lib.buffers.buffer import BufferType, ReplayBuffer
 from lib.networks.dqn import Dqn
 from lib.structs.arm_and_box_sim import (
@@ -58,7 +58,7 @@ PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
-        env: ApproachEnv,
+        env: ApproachEnvDiscrete,
         experiment: Experiment,
         debug: bool):
 
@@ -199,7 +199,7 @@ def main():
         action_mode=ActionMode.DOF_POSITION
     )
 
-    env = ApproachEnv(sim_config, task_config, gym)
+    env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
     agent_id = 0
     dim = 64

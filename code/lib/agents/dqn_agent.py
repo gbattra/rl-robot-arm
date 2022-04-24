@@ -48,6 +48,9 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
 
+    def save_checkpoint(self) -> None:
+        torch.save(self.policy_net.state_dict(), self.save_path)
+
     def remember(
             self,
             states: torch.Tensor,

@@ -26,6 +26,9 @@ class Analytics:
     epoch_episode_lengths: torch.Tensor
     debug: bool
 
+    def __str__(self) -> str:
+        return f'SAC Agent {self.experiment.agent_id}'
+
 
 def initialize_analytics(
         experiment: Experiment,
@@ -89,7 +92,7 @@ def plot_learning(
     desc = str(analytics.experiment)
     plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')
-    plt.title(f'DQN Agent {analytics.experiment.agent_id}')
+    plt.title(str(analytics))
 
     plt.legend()
 
@@ -109,7 +112,7 @@ def save_analytics(analytics: Analytics, root: str) -> None:
     desc = str(analytics.experiment)
     plt.xlabel(f'Episode \n {desc}')
     plt.ylabel('Reward')
-    plt.title(f'DQN Agent {analytics.experiment.agent_id}')
+    plt.title(str(analytics))
 
     plt.legend()
 

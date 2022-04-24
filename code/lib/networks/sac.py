@@ -5,6 +5,7 @@
 SAC Networks
 '''
 
+from turtle import forward
 from torch import device, nn
 import torch
 from torch.distributions.normal import Normal
@@ -51,6 +52,9 @@ class ValueNetwork(nn.Module):
         self.loss_fn = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
+    def forward(self, x):
+        return self.network(x)
+
 
 class ActorNetwork(nn.Module):
     def __init__(self, obs_size: int, action_size: int, dim_size: int, action_scale: float, lr: float):
@@ -71,13 +75,13 @@ class ActorNetwork(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
         self.action_scale = action_scale
+        self.action_size = action_size
 
     def forward(self, x):
-        action_dists = self.network(x).view(-1, 2)
-        action_dists[:, 1] = torch.clamp(action_dists[:, 1], min=1e-6, max=1.)
-
-        mu = action_dists[: 0]
-        sigma = action_dists[:, 1]
+        action_dists = self.network(x).view(-1, self.action_size, 2)
+        mu = action_dists[:, :, 0]
+        sigma = action_dists[:, :, 1]
+        sigma = torch.clamp(sigma, min=1e-6, max=1.)
         
         return mu, sigma
 
@@ -90,7 +94,7 @@ class ActorNetwork(nn.Module):
         else:
             actions = probs.sample()
         
-        action = torch.tanh(actions, device=self.device) * self.action_scale
+        action = torch.tanh(actions)
         log_probs = probs.log_prob(actions)
 
-        return action, log_probs
+        return actions, log_probs
