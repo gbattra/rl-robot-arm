@@ -14,9 +14,6 @@ from lib.envs.env import Env
 
 
 class Agent:
-    def __init__(self, save_path: str) -> None:
-        self.save_path = save_path
-
     @abstractmethod
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         '''
@@ -45,35 +42,25 @@ class Agent:
         pass
 
     @abstractmethod
-    def save_checkpoint(self) -> None:
+    def save_checkpoint(self, filename: str) -> None:
         '''
         Save model states to dir
         '''
         pass
 
-    def train(
+    def step(
             self,
             env: Env,
-            n_epochs: int,
-            n_episodes: int,
-            n_steps: int,
-            analytics: Callable) -> Dict:
-        gt = 0
-        for p in trange(n_epochs, desc="Epoch", leave=False):
-            for e in trange(n_episodes, desc="Episode", leave=False):
-                env.reset()
-                for t in trange(n_steps, desc="Step", leave=False):
-                    s = env.compute_observations()
-                    a = self.act(s, gt)
-                    s_prime, r, done, _ = env.step(a)
+            timestep: int) -> Dict:
+        s = env.compute_observations()
+        a = self.act(s, timestep)
+        s_prime, r, done, _ = env.step(a)
 
-                    self.remember(s, a, s_prime, r, done)
+        self.remember(s, a, s_prime, r, done)
 
-                    loss = self.optimize(gt)
-                    analytics(r, done, loss, p, e, t)
+        loss = self.optimize(timestep)
 
-                    # reset envs which have finished task
-                    env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])
+        # reset envs which have finished task
+        env._reset_dones(torch.arange(env.n_envs, device=self.device)[done[:, 0]])
 
-                    gt += 1
-            self.save_checkpoint()
+        return s, a, s_prime, r, done, {'loss': loss}

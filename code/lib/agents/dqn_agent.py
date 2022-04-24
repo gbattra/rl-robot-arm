@@ -30,9 +30,8 @@ class DQNAgent(Agent):
             epsilon: Callable,
             gamma: float,
             batch_size: int,
-            target_update_freq: int,
-            save_path: str) -> None:
-        super().__init__(save_path)
+            target_update_freq: int) -> None:
+        super().__init__()
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.agent_id = agent_id
@@ -48,8 +47,8 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
 
-    def save_checkpoint(self) -> None:
-        torch.save(self.policy_net.state_dict(), self.save_path)
+    def save_checkpoint(self, filepath: str) -> None:
+        torch.save(self.policy_net.state_dict(), filepath)
 
     def remember(
             self,

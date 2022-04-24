@@ -26,10 +26,9 @@ class ActorCriticAgent(Agent):
             alpha: float,
             lr: float,
             gamma: float,
-            target_update_freq: int,
-            save_path: str
+            target_update_freq: int
         ) -> None:
-        super().__init__(save_path)
+        super().__init__()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.buffer = buffer
@@ -43,12 +42,12 @@ class ActorCriticAgent(Agent):
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
 
-        self.actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size, save_path).to(self.device)
-        self.target_actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size, save_path).to(self.device)
+        self.actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size).to(self.device)
+        self.target_actor_critic = ActorCriticNetwork(lr, obs_size, n_actions, n_joints, network_dim_size).to(self.device)
         self.target_actor_critic.load_state_dict(self.actor_critic.state_dict())
 
-    def save_checkpoint(self) -> None:
-        torch.save(self.actor_critic.state_dict(), self.save_path)
+    def save_checkpoint(self, filepath: str) -> None:
+        torch.save(self.actor_critic.state_dict(), filepath)
 
     def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
         with torch.no_grad():

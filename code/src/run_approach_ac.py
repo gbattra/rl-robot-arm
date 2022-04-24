@@ -12,11 +12,13 @@ from typing import Callable
 
 import torch
 from lib.agents.ac_agent import ActorCriticAgent
-from lib.analytics.plot_learning import Analytics, initialize_analytics, plot_learning, save_analytics
+from lib.analytics.analytics import Analytics, initialize_analytics
+from lib.analytics.plotting import plot_learning
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
 from lib.envs.approach_env import ApproachEnvContinuous, ApproachEnvDiscrete
 from lib.buffers.buffer import BufferType, ReplayBuffer
+from lib.runner import Runner
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
@@ -85,11 +87,10 @@ def run_experiment(
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
-        alpha=1e-2,
+        alpha=1e-3,
         lr=experiment.lr,
         gamma=GAMMA,
-        target_update_freq=experiment.target_update_freq,
-        save_path=f'models/ac/ac_{experiment.agent_id}.pth'
+        target_update_freq=experiment.target_update_freq
     )
 
     analytics: Analytics = initialize_analytics(
@@ -99,13 +100,12 @@ def run_experiment(
         debug=debug
     )
 
-    agent.train(
-        env,
-        experiment.n_epochs,
-        experiment.n_episodes,
-        experiment.n_timesteps,
-        lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
-    save_analytics(analytics, 'results')
+    runner: Runner = Runner()
+    runner.run(
+        experiment=experiment,
+        env=env,
+        agent=agent,
+        analytics=lambda r, d, l, p, e, t: plot_learning(analytics, r,d,l,p,e,t))
 
 
 def main():

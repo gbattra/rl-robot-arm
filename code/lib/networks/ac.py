@@ -16,15 +16,13 @@ class ActorCriticNetwork(nn.Module):
             obs_size: int,
             n_actions: int,
             n_joints: int,
-            dim_size: int,
-            save_path: str):
+            dim_size: int):
         super().__init__()
         self.obs_size = obs_size
         self.action_size = n_actions * n_joints
         self.n_actions = n_actions
         self.n_joints = n_joints
         self.dim_size = dim_size
-        self.save_path = save_path
 
         self.network = nn.Sequential(
             nn.Linear(obs_size, dim_size),
