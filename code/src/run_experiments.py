@@ -1,3 +1,5 @@
+#!/usr/bin/env python 
+
 # Greg Attra
 # 04.24.22
 
