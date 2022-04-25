@@ -40,9 +40,9 @@ def plot_learning(
     plt.figure(1, figsize=(9, 10))
     plt.clf()
 
-    epoch_rewards = analytics.epoch_rewards.cpu().numpy()
-    epoch_episodes = analytics.epoch_episodes.cpu().numpy()
-    epoch_losses = analytics.epoch_losses.cpu().numpy()
+    epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
+    epoch_episodes = analytics.epoch_episodes.detach().cpu().numpy()
+    epoch_losses = analytics.epoch_losses.detach().cpu().numpy()
 
     plt.plot(epoch_episodes[0, :cur_ep] / analytics.env_timesteps.shape[0], label=f'Episode Reward')
     plt.plot(epoch_losses[0, :cur_ep] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
@@ -64,7 +64,7 @@ def save_plot(analytics: Analytics, filename: str) -> None:
     plt.clf()
 
     epoch_rewards = analytics.epoch_rewards.detach().cpu().numpy()
-    epoch_losses = analytics.epoch_losses.cpu().numpy()
+    epoch_losses = analytics.epoch_losses.detach().cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
     plt.plot(epoch_losses[0] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
     plt.xlabel(f'Episode')

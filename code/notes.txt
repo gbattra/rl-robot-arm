@@ -17,3 +17,59 @@ Actor Critic:
         Fix:
             - More envs generating more samples per step
             - Bigger batch sizes
+
+DQN:
+
+
+-------------------
+
+Analysis
+
++ SMOOTH CURVES
+    Config:
+        - Random = False
+    Agents:
+        - DQN: 0
+
++ ZIGZAG BUT STABLE LEARNING
+    Config:
+        - Random = True
+
+    Agents:
+        - DQN: 1
+
+Position Mode = Target:
+    - DQN and SAC performed poorly with position and targets as current state
+    - Stable when domain random but no Learning
+
+HER Buffer:
+    - ends up learning but takes longer than STANDARD and WINNING
+        * when domain is NOT random
+        * when domain IS random, performance is much better
+            - though final reward is lower (but learning terminated early)
+            - i.e. Agent 5
+    
+    Agents:
+        - DQN: 4
+
+Things to compare:
+    - Buffers:
+        * Position Mode, Non-Random
+        * Position Mode, Random
+------
+
+New Experiments:
+    TARGET:
+        - try with velocity added to state
+        - try with even bigger NN's
+        - try with longer episodes
+    RANDOM:
+        - WIN Buffer
+        - bigger nets
+        - bigger batch sizes
+        - more envs
+        - run longer epochs!
+    DIST THRESH:
+        - try with 0.1
+        - non-random only
+        - position mode only
