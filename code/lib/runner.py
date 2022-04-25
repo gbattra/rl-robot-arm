@@ -21,6 +21,7 @@ from lib.structs.experiment import Experiment
 class Runner:
     def __init__(
             self,
+            name: str,
             experiment: Experiment,
             analytics: Analytics,
             env: Env,
@@ -29,8 +30,9 @@ class Runner:
         self.analytics = analytics
         self.env = env
         self.agent = agent
+        self.name = name
 
-        self.root = f'experiments/{experiment.algo_name}/{experiment.agent_id}'
+        self.root = f'experiments/{name}/{experiment.algo_name}/{experiment.agent_id}'
         self.analytics_dir = f'{self.root}/analytics'
         self.figs_dir = f'{self.analytics_dir}/figs'
         self.data_dir = f'{self.analytics_dir}/data'

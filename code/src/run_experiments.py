@@ -58,6 +58,7 @@ PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
+        name: str,
         env: ApproachEnvContinuous,
         experiment: Experiment,
         debug: bool):
@@ -127,6 +128,7 @@ def run_experiment(
     )
 
     runner: Runner = Runner(
+        name=name,
         env=env,
         agent=agent,
         analytics=analytics,
@@ -219,39 +221,105 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    batch_size = N_ENVS
+    # target mode
     for algo in [Algorithm.DQN, Algorithm.AC]:
         agent_id = 0
-        for batch_size in [N_ENVS // 2, N_ENVS]:
-            for dim_size in [64*2*2, 64*2*2*2]:
+        for n_steps in [300, 500]:
+            for dim_size in [64*(2**4), 64*(2**5)]:
                 for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-                    for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
-                        for randomize in [False, True]:
+                    for randomize in [False, True]:
                             experiment = Experiment(
                                 algo_name=algo.value,
-                                n_epochs=N_EPOCHS,
+                                n_epochs=3,
                                 n_episodes=N_EPISODES,
-                                n_timesteps=N_STEPS,
+                                n_timesteps=n_steps,
                                 dim_size=dim_size,
                                 agent_id=agent_id,
                                 n_envs=N_ENVS,
-                                batch_size=batch_size,
+                                batch_size=N_ENVS//2,
                                 lr=0.0001,
                                 buffer_type=buffer_type,
                                 eps_decay=EPS_DECAY,
                                 randomize=randomize,
                                 gamma=GAMMA,
-                                action_scale=action_scale,
-                                dist_thresh=dist_thresh,
+                                action_scale=0.1,
+                                dist_thresh=0.2,
                                 target_update_freq=TARGET_UPDATE_FREQ,
                                 replay_buffer_size=REPLAY_BUFFER_SIZE,
-                                action_mode=action_mode
+                                action_mode=ActionMode.DOF_TARGET
                             )
                             run_experiment(
+                                name='target_mode',
                                 env=env,
                                 experiment=experiment,
                                 debug=args.debug)
                             agent_id += 1
+
+    # randomize
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        agent_id = 0
+        for n_steps in [300, 400]:
+            for dim_size in [64*(2**4), 64*(2**5)]:
+                for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+                    experiment = Experiment(
+                        algo_name=algo.value,
+                        n_epochs=5,
+                        n_episodes=N_EPISODES,
+                        n_timesteps=n_steps,
+                        dim_size=dim_size,
+                        agent_id=agent_id,
+                        n_envs=N_ENVS,
+                        batch_size=N_ENVS//2,
+                        lr=0.0001,
+                        buffer_type=buffer_type,
+                        eps_decay=EPS_DECAY,
+                        randomize=True,
+                        gamma=GAMMA,
+                        action_scale=0.1,
+                        dist_thresh=0.2,
+                        target_update_freq=TARGET_UPDATE_FREQ,
+                        replay_buffer_size=REPLAY_BUFFER_SIZE,
+                        action_mode=ActionMode.DOF_POSITION
+                    )
+                    run_experiment(
+                        name='random',
+                        env=env,
+                        experiment=experiment,
+                        debug=args.debug)
+                    agent_id += 1
+    
+    # dist thresh
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        agent_id = 0
+        for action_scale in [0.05, 0.025]:
+            for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+                for randomize in [True, False]:
+                    experiment = Experiment(
+                        algo_name=algo.value,
+                        n_epochs=5,
+                        n_episodes=N_EPISODES,
+                        n_timesteps=200,
+                        dim_size=62*2*2,
+                        agent_id=agent_id,
+                        n_envs=N_ENVS,
+                        batch_size=N_ENVS//2,
+                        lr=0.0001,
+                        buffer_type=buffer_type,
+                        eps_decay=EPS_DECAY,
+                        randomize=True,
+                        gamma=GAMMA,
+                        action_scale=action_scale,
+                        dist_thresh=0.1,
+                        target_update_freq=TARGET_UPDATE_FREQ,
+                        replay_buffer_size=REPLAY_BUFFER_SIZE,
+                        action_mode=ActionMode.DOF_POSITION
+                    )
+                    run_experiment(
+                        name='dist_thresh',
+                        env=env,
+                        experiment=experiment,
+                        debug=args.debug)
+                    agent_id += 1
 
     env.destroy()
 
