@@ -1,0 +1,20 @@
+{
+    "action_mode": "target",
+    "action_scale": 0.1,
+    "agent_id": 10,
+    "algo_name": "ac",
+    "batch_size": 500,
+    "buffer_type": "standard",
+    "dim_size": 256,
+    "dist_thresh": 0.2,
+    "eps_decay": 0.9999,
+    "gamma": 0.99,
+    "lr": 0.0001,
+    "n_envs": 1000,
+    "n_episodes": 100,
+    "n_epochs": 3,
+    "n_timesteps": 200,
+    "randomize": false,
+    "replay_buffer_size": 1000000,
+    "target_update_freq": 100
+}

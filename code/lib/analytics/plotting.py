@@ -67,8 +67,7 @@ def save_plot(analytics: Analytics, filename: str) -> None:
     epoch_losses = analytics.epoch_losses.cpu().numpy()
     plt.plot(epoch_rewards[0] / analytics.env_timesteps.shape[0], label=f'Episode Rewards')
     plt.plot(epoch_losses[0] / analytics.env_timesteps.shape[0], linestyle='dotted', label=f'Episode Losses')
-    desc = str(analytics.experiment)
-    plt.xlabel(f'Episode \n {desc}')
+    plt.xlabel(f'Episode')
     plt.ylabel('Reward')
     plt.title(str(analytics))
 
