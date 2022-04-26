@@ -76,6 +76,7 @@ def visualize_results(plot_config: PlotConfig):
         data = load_data(plot_component.filter_func, plot_component.datadirs)
         plt.plot(data.mean(axis=0), label=plot_component.label, color=plot_component.color)
 
+    plt.title(plot_config.title)
     plt.xlabel(plot_config.xaxis)
     plt.ylabel(plot_config.yaxis)
     plt.legend()

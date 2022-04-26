@@ -56,7 +56,7 @@ def position_mode_non_random_all_buffers(datadirs: List[str]) -> None:
         )
     ]
     plot_config = PlotConfig(
-        title='DQN Simple Domain',
+        title='DQN - Position Mode - Non-random',
         xaxis='Episode',
         yaxis='Reward',
         desc='Results in a non-random domain with "position" action mode',
@@ -65,23 +65,143 @@ def position_mode_non_random_all_buffers(datadirs: List[str]) -> None:
     visualize_results(plot_config)
 
 
+def position_mode_random_all_buffers(datadirs: List[str]) -> None:
+    plot_components = [
+        PlotComponent(
+            label='Winning Buffer',
+            color=(1., .0, .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.WINNING) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+        ),
+        PlotComponent(
+            label='HER Buffer',
+            color=(.0, 1., .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.HER) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+        ),
+        PlotComponent(
+            label='Standard Buffer',
+            color=(.0, .0, 1.),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.STANDARD) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+        )
+    ]
+    plot_config = PlotConfig(
+        title='DQN - Position Mode - Random',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a random domain with "position" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
+
+
+def target_mode_non_random_all_buffers(datadirs: List[str]) -> None:
+    plot_components = [
+        PlotComponent(
+            label='Winning Buffer',
+            color=(1., .0, .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.WINNING) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, False)
+        ),
+        PlotComponent(
+            label='HER Buffer',
+            color=(.0, 1., .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.HER) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, False)
+        ),
+        PlotComponent(
+            label='Standard Buffer',
+            color=(.0, .0, 1.),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.STANDARD) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, False)
+        )
+    ]
+    plot_config = PlotConfig(
+        title='DQN - Target Mode - Non-random',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a non-random domain with "target" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
+
+
+def target_mode_random_all_buffers(datadirs: List[str]) -> None:
+    plot_components = [
+        PlotComponent(
+            label='Winning Buffer',
+            color=(1., .0, .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.WINNING) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, True)
+        ),
+        PlotComponent(
+            label='HER Buffer',
+            color=(.0, 1., .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.HER) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, True)
+        ),
+        PlotComponent(
+            label='Standard Buffer',
+            color=(.0, .0, 1.),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.STANDARD) \
+                and action_mode(e, ActionMode.DOF_TARGET) \
+                and randomize(e, True)
+        )
+    ]
+    plot_config = PlotConfig(
+        title='DQN - Target Mode - Random',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a random domain with "target" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
+
 def visualize_dqn_results():
     datadirs = [
         'old/dqn',
-        'random/dqn',
-        'target_mode/dqn'
+        # 'random/dqn',
+        # 'target_mode/dqn'
     ]
 
     # position mode / non-random / all buffers
-    position_mode_non_random_all_buffers(datadirs)
-    
+    position_mode_non_random_all_buffers(['old/dqn'])
 
     # position mode / random / all buffers
+    position_mode_random_all_buffers(['old/dqn'])
 
     # target mode / non-random / all buffers
+    target_mode_non_random_all_buffers(['target_mode/dqn'])
 
     # target mode / random / all buffers
-    pass
+    target_mode_random_all_buffers(['target_mode/dqn'])
 
 
 def visualize_ac_results():
