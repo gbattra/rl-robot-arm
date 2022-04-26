@@ -223,40 +223,6 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    # target mode
-    for algo in [Algorithm.DQN, Algorithm.AC]:
-        agent_id = 0
-        for n_steps in [300, 500]:
-            for dim_size in [64*(2**4), 64*(2**5)]:
-                for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-                    for randomize in [False, True]:
-                            experiment = Experiment(
-                                algo_name=algo.value,
-                                n_epochs=3,
-                                n_episodes=N_EPISODES,
-                                n_timesteps=n_steps,
-                                dim_size=dim_size,
-                                agent_id=agent_id,
-                                n_envs=N_ENVS,
-                                batch_size=N_ENVS//2,
-                                lr=0.0001,
-                                buffer_type=buffer_type,
-                                eps_decay=EPS_DECAY,
-                                randomize=randomize,
-                                gamma=GAMMA,
-                                action_scale=0.1,
-                                dist_thresh=0.2,
-                                target_update_freq=TARGET_UPDATE_FREQ,
-                                replay_buffer_size=REPLAY_BUFFER_SIZE,
-                                action_mode=ActionMode.DOF_TARGET
-                            )
-                            run_experiment(
-                                name='target_mode',
-                                env=env,
-                                experiment=experiment,
-                                debug=args.debug)
-                            agent_id += 1
-
     # randomize
     for algo in [Algorithm.DQN, Algorithm.AC]:
         agent_id = 0
