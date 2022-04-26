@@ -6,10 +6,11 @@ Create data visualizations
 '''
 
 from typing import List
-from lib.buffers.buffer import BufferType
 from lib.structs.approach_task import ActionMode
+from lib.buffers.buffer import BufferType
 from lib.structs.experiment import Experiment
-from lib.structs.plot_config import PlotComponent
+from lib.structs.plot_config import PlotComponent, PlotConfig
+from lib.analytics.visualize import visualize_results
 
 
 def randomize(experiment: Experiment, randomize: bool) -> bool:
@@ -37,7 +38,7 @@ def position_mode_non_random_all_buffers(datadirs: List[str]) -> None:
         ),
         PlotComponent(
             label='HER Buffer',
-            color=(1., .0, .0),
+            color=(.0, 1., .0),
             datadirs=datadirs,
             filter_func=lambda e: \
                     buffer_type(e, BufferType.HER) \
@@ -46,7 +47,7 @@ def position_mode_non_random_all_buffers(datadirs: List[str]) -> None:
         ),
         PlotComponent(
             label='Standard Buffer',
-            color=(1., .0, .0),
+            color=(.0, .0, 1.),
             datadirs=datadirs,
             filter_func=lambda e: \
                     buffer_type(e, BufferType.STANDARD) \
@@ -54,6 +55,14 @@ def position_mode_non_random_all_buffers(datadirs: List[str]) -> None:
                 and randomize(e, False)
         )
     ]
+    plot_config = PlotConfig(
+        title='DQN Simple Domain',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a non-random domain with "position" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
 
 
 def visualize_dqn_results():
@@ -84,4 +93,12 @@ def visualize_ac_results():
 
     # target mode / random / all buffers
     pass
+
+
+def main():
+    visualize_dqn_results()
+
+
+if __name__ == '__main__':
+    main()
 

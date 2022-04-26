@@ -5,10 +5,9 @@
 Task for training arm to approach target position
 """
 
+from lib.structs.arm_and_box_sim import ArmAndBoxSim
 from enum import Enum, IntEnum
 from dataclasses import dataclass
-
-from lib.structs.arm_and_box_sim import ArmAndBoxSim
 import torch
 
 

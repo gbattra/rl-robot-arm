@@ -5,14 +5,12 @@
 Env with a robot arm and a box
 """
 
+from isaacgym import gymapi
 from dataclasses import dataclass
 from typing import Any, List, Optional
-
-from isaacgym import gymapi
+from lib.structs.sim import Sim
 
 import torch
-
-from lib.structs.sim import Sim
 
 
 @dataclass
