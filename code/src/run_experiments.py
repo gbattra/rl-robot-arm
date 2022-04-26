@@ -226,36 +226,34 @@ def main():
     # randomize
     for algo in [Algorithm.DQN, Algorithm.AC]:
         agent_id = 0
-        for n_steps in [300, 400]:
-            for dim_size in [64*(2**4), 64*(2**5)]:
-                for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-                    experiment = Experiment(
-                        algo_name=algo.value,
-                        n_epochs=5,
-                        n_episodes=N_EPISODES,
-                        n_timesteps=n_steps,
-                        dim_size=dim_size,
-                        agent_id=agent_id,
-                        n_envs=N_ENVS,
-                        batch_size=N_ENVS//2,
-                        lr=0.0001,
-                        buffer_type=buffer_type,
-                        eps_decay=EPS_DECAY,
-                        randomize=True,
-                        gamma=GAMMA,
-                        action_scale=0.1,
-                        dist_thresh=0.2,
-                        target_update_freq=TARGET_UPDATE_FREQ,
-                        replay_buffer_size=REPLAY_BUFFER_SIZE,
-                        action_mode=ActionMode.DOF_POSITION
-                    )
-                    run_experiment(
-                        name='random',
-                        env=env,
-                        experiment=experiment,
-                        debug=args.debug)
-                    agent_id += 1
-    
+        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+            experiment = Experiment(
+                algo_name=algo.value,
+                n_epochs=10,
+                n_episodes=N_EPISODES,
+                n_timesteps=200,
+                dim_size=64*(2**4),
+                agent_id=2,
+                n_envs=N_ENVS,
+                batch_size=N_ENVS//2,
+                lr=0.0001,
+                buffer_type=buffer_type,
+                eps_decay=EPS_DECAY,
+                randomize=True,
+                gamma=GAMMA,
+                action_scale=0.1,
+                dist_thresh=0.2,
+                target_update_freq=TARGET_UPDATE_FREQ,
+                replay_buffer_size=REPLAY_BUFFER_SIZE,
+                action_mode=ActionMode.DOF_POSITION
+            )
+            run_experiment(
+                name='random_long',
+                env=env,
+                experiment=experiment,
+                debug=args.debug)
+            agent_id += 1
+            
     # dist thresh
     for algo in [Algorithm.DQN, Algorithm.AC]:
         agent_id = 0
@@ -274,7 +272,7 @@ def main():
                         lr=0.0001,
                         buffer_type=buffer_type,
                         eps_decay=EPS_DECAY,
-                        randomize=True,
+                        randomize=randomize,
                         gamma=GAMMA,
                         action_scale=action_scale,
                         dist_thresh=0.1,
