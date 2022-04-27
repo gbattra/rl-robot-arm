@@ -67,7 +67,9 @@ def load_data(experiment_filter: Callable[[Experiment], bool], datadirs: List[st
             # load numpy data from file
             data = np.load(f'{root}/analytics/data/total_rewards.npy')
             total_data.append(data)
-    
+    if not total_data:
+        return np.array([])
+
     return np.array(total_data).squeeze(1) / experiment.n_envs
 
 
@@ -79,6 +81,8 @@ def visualize_results(plot_config: PlotConfig):
     # collect data
     for plot_component in plot_config.components:
         total_returns = load_data(plot_component.filter_func, plot_component.datadirs)
+        if total_returns.size == 0:
+            continue
         avg_ret = np.average(total_returns, axis=0)
         plt.plot(avg_ret, color=plot_component.color, label=plot_component.label)
         

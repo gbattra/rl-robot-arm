@@ -13,6 +13,9 @@ from lib.structs.plot_config import PlotComponent, PlotConfig
 from lib.analytics.visualize import visualize_results
 
 
+def dist_thresh(experiment: Experiment, dist: float) -> bool:
+    return experiment.dist_thresh == dist
+
 def randomize(experiment: Experiment, randomize: bool) -> bool:
     return experiment.randomize == randomize
 
@@ -219,9 +222,109 @@ def visualize_ac_results():
     pass
 
 
+def visualize_random_long_results():
+    position_mode_random_all_buffers('DQN', ['random_long/dqn'])
+
+
+def visualize_random_results():
+    position_mode_random_all_buffers('DQN', ['random_long/dqn'])
+    position_mode_random_all_buffers('DQN', ['random/dqn'])
+
+
+def visualize_dist_thresh_results():
+    datadirs = ['dist_thresh/dqn']
+    plot_components = [
+        PlotComponent(
+            label='Winning Buffer',
+            color=(1., .0, .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.WINNING) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+                and dist_thresh(e, 0.1)
+        ),
+        PlotComponent(
+            label='HER Buffer',
+            color=(.0, 1., .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.HER) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+                and dist_thresh(e, 0.1)
+        ),
+        PlotComponent(
+            label='Standard Buffer',
+            color=(.0, .0, 1.),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.STANDARD) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, True)
+                and dist_thresh(e, 0.1)
+        )
+    ]
+    plot_config = PlotConfig(
+        title=f'DQN - Position Mode - Random - Distance Threshold: 0.1',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a random domain with "position" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
+
+    plot_components = [
+        PlotComponent(
+            label='Winning Buffer',
+            color=(1., .0, .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.WINNING) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, False)
+                and dist_thresh(e, 0.1)
+        ),
+        PlotComponent(
+            label='HER Buffer',
+            color=(.0, 1., .0),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.HER) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, False)
+                and dist_thresh(e, 0.1)
+        ),
+        PlotComponent(
+            label='Standard Buffer',
+            color=(.0, .0, 1.),
+            datadirs=datadirs,
+            filter_func=lambda e: \
+                    buffer_type(e, BufferType.STANDARD) \
+                and action_mode(e, ActionMode.DOF_POSITION) \
+                and randomize(e, False)
+                and dist_thresh(e, 0.1)
+        )
+    ]
+    plot_config = PlotConfig(
+        title=f'DQN - Position Mode - Non-Random - Distance Threshold: 0.1',
+        xaxis='Episode',
+        yaxis='Reward',
+        desc='Results in a random domain with "position" action mode',
+        components=plot_components
+    )
+    visualize_results(plot_config)
+
+
 def main():
-    visualize_dqn_results()
+    # visualize_dqn_results()
     # visualize_ac_results()
+
+    # visualize_random_long_results()
+
+    # visualize_random_results()
+
+    visualize_dist_thresh_results()
 
 
 if __name__ == '__main__':
