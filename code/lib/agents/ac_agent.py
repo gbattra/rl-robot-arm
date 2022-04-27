@@ -8,7 +8,7 @@ SAC Agent
 from typing import Callable
 import torch
 
-from lib.agents.agent import Agent
+from lib.agents.agent import Agent, AgentMode
 from lib.buffers.buffer import ReplayBuffer
 from lib.networks.ac import ActorCriticNetwork
 
@@ -49,7 +49,7 @@ class ActorCriticAgent(Agent):
     def save_checkpoint(self, filepath: str) -> None:
         torch.save(self.actor_critic.state_dict(), filepath)
 
-    def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
+    def act(self, state: torch.Tensor, _: int) -> torch.Tensor:
         with torch.no_grad():
             _, policy = self.actor_critic(state)
             action_probs = torch.distributions.Categorical(policy)
@@ -93,3 +93,37 @@ class ActorCriticAgent(Agent):
             self.target_actor_critic.load_state_dict(self.actor_critic.state_dict())
 
         return total_loss
+
+
+
+class ActorCriticPlayer(Agent):
+    def __init__(
+            self,
+            n_actions: int,
+            n_joints: int,
+            obs_size: int,
+            network_dim_size: int,
+            action_scale: float,
+        ) -> None:
+        super().__init__()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        self.action_scale = action_scale
+        self.obs_size = obs_size
+        self.n_joints = n_joints
+        self.n_actions = n_actions
+        self.mode = AgentMode.TRAIN
+
+        self.actor_critic = ActorCriticNetwork(0, obs_size, n_actions, n_joints, network_dim_size).to(self.device)
+
+    def load(self, model_path: str) -> None:
+        self.actor_critic.load_state_dict(torch.load(model_path))
+        self.actor_critic.eval()
+
+    def act(self, state: torch.Tensor, _: int) -> torch.Tensor:
+        with torch.no_grad():
+            _, policy = self.actor_critic(state)
+            action_probs = torch.distributions.Categorical(policy)
+            actions = action_probs.sample()
+        
+        return actions

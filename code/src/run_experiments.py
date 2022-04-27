@@ -233,7 +233,7 @@ def main():
                 n_episodes=N_EPISODES,
                 n_timesteps=200,
                 dim_size=64*(2**4),
-                agent_id=2,
+                agent_id=agent_id,
                 n_envs=N_ENVS,
                 batch_size=N_ENVS//2,
                 lr=0.0001,

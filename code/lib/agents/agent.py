@@ -6,6 +6,7 @@ Class representing an agent for action selection and learning
 '''
 
 from abc import abstractmethod
+from enum import Enum
 from typing import Callable, Dict
 
 import torch

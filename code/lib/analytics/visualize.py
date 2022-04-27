@@ -18,6 +18,9 @@ import numpy as np
 
 from lib.structs.plot_config import PlotConfig
 
+import pandas as pd
+import seaborn as sns
+
 
 def experiment_from_config(config: Dict) -> Experiment:
     return Experiment(
@@ -42,7 +45,7 @@ def experiment_from_config(config: Dict) -> Experiment:
     )
 
 
-def load_data(experiment_filter: Callable[[Experiment], bool], datadirs: List[str]) -> np.ndarray:
+def load_data(experiment_filter: Callable[[Experiment], bool], datadirs: List[str]) -> pd.DataFrame:
     total_data = []
     for datadir in datadirs:
         for resultsdir in os.listdir(f'experiments/{datadir}'):
@@ -70,11 +73,22 @@ def visualize_results(plot_config: PlotConfig):
     # setup plot
     plt.figure()
     plt.clf()
-
+    sns.set_style("darkgrid")
     # collect data
     for plot_component in plot_config.components:
-        data = load_data(plot_component.filter_func, plot_component.datadirs)
-        plt.plot(data.mean(axis=0), label=plot_component.label, color=plot_component.color)
+        total_returns = load_data(plot_component.filter_func, plot_component.datadirs)
+        avg_ret = np.average(total_returns, axis=0)
+        plt.plot(avg_ret, color=plot_component.color, label=plot_component.label)
+        
+        stde_avg_ret = 1.96 * (np.std(total_returns, axis=0) / np.sqrt(total_returns.shape[1]))
+        y_neg = avg_ret - stde_avg_ret
+        y_pos = avg_ret + stde_avg_ret
+        plt.fill_between(
+            range(total_returns.shape[1]),
+            y_neg,
+            y_pos,
+            alpha=0.2,
+            color=plot_component.color)
 
     plt.title(plot_config.title)
     plt.xlabel(plot_config.xaxis)

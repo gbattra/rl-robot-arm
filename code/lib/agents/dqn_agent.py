@@ -11,7 +11,7 @@ from typing import Callable, Dict
 import torch
 from torch import nn
 from tqdm import trange
-from lib.agents.agent import Agent
+from lib.agents.agent import Agent, AgentMode
 from lib.buffers.buffer import ReplayBuffer
 from lib.envs.env import Env
 
@@ -66,14 +66,16 @@ class DQNAgent(Agent):
             joint_a_vals: torch.Tensor = a_vals.view(
                 (-1,) + (self.n_dofs, self.n_dof_actions)
             ).to(self.device)
+
+            # get max a_vals per joint: [N x n_joints]
+            policy_actions = joint_a_vals.max(-1)[1]
+
+            # if not in play mode, take epsilon-random actions
             randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
             # get random action indices in shape: [N x n_joints]
             random_actions = torch.randint(
                 0, self.n_dof_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1]), device=self.device
             )
-
-            # get max a_vals per joint: [N x n_joints]
-            policy_actions = joint_a_vals.max(-1)[1]
             policy_actions[randoms] = random_actions[randoms]
         return policy_actions
 
@@ -107,3 +109,41 @@ class DQNAgent(Agent):
             self.target_net.load_state_dict(self.policy_net.state_dict())
 
         return loss
+
+
+class DQNPlayer(Agent):
+    def __init__(
+            self,
+            n_dofs: int,
+            n_dof_actions: int,
+            policy_net: nn.Module) -> None:
+        super().__init__()
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.n_dofs = n_dofs
+        self.n_dof_actions = n_dof_actions
+        self.policy_net = policy_net
+
+    def load(self, model_path: str) -> None:
+        self.policy_net.load_state_dict(torch.load(model_path))
+        self.policy_net.eval()
+
+    def act(self, state: torch.Tensor, t: int) -> torch.Tensor:
+        with torch.no_grad():
+            a_vals: torch.Tensor = self.policy_net(state)
+            # reshape output to correspond to joints: [N x 21] -> [N x n_joints x n_joint_actions]
+            joint_a_vals: torch.Tensor = a_vals.view(
+                (-1,) + (self.n_dofs, self.n_dof_actions)
+            ).to(self.device)
+
+            # get max a_vals per joint: [N x n_joints]
+            policy_actions = joint_a_vals.max(-1)[1]
+
+            # if not in play mode, take epsilon-random actions
+            randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
+            # get random action indices in shape: [N x n_joints]
+            random_actions = torch.randint(
+                0, self.n_dof_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1]), device=self.device
+            )
+            policy_actions[randoms] = random_actions[randoms]
+        return policy_actions
