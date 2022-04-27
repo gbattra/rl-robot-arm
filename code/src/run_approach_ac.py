@@ -13,13 +13,10 @@ from typing import Callable
 import torch
 from lib.structs.algorithm import Algorithm
 from lib.agents.ac_agent import ActorCriticAgent
-from lib.analytics.analytics import Analytics, initialize_analytics
-from lib.analytics.plotting import plot_learning
 from lib.buffers.her_buffer import HerBuffer
 from lib.buffers.win_buffer import WinBuffer
 from lib.envs.approach_env import ApproachEnvContinuous, ApproachEnvDiscrete
 from lib.buffers.buffer import BufferType, ReplayBuffer
-from lib.runner import Runner
 from lib.structs.arm_and_box_sim import (
     ArmAndBoxSimConfig,
     ArmConfig,
@@ -27,7 +24,8 @@ from lib.structs.arm_and_box_sim import (
     BoxConfig,
     ViewerConfig,
 )
-
+from lib.runner import Runner
+from lib.analytics.analytics import Analytics, initialize_analytics
 from lib.structs.approach_task import (
     ActionMode,
     ApproachTaskActions,
@@ -45,20 +43,23 @@ EPS_DECAY: float = 0.9999
 
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
+BATCH_SIZE: int = 250
+DIM_SIZE: int = 500
+N_ENVS: int = 4000
 
-N_ENVS: int = 1000
-N_EPOCHS: int = 4
+N_EPOCHS: int = 3
 N_EPISODES: int = 100
 N_STEPS: int = 200
-
 
 PLOT_FREQ: int = N_STEPS
 SAVE_FREQ: int = N_STEPS * N_EPISODES
 
 def run_experiment(
+        name: str,
         env: ApproachEnvContinuous,
         experiment: Experiment,
-        debug: bool):
+        debug: bool,
+        alpha: float = 1e-3):
 
     env.randomize = experiment.randomize
     env.action_scale = experiment.action_scale
@@ -87,10 +88,10 @@ def run_experiment(
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
-        alpha=1e-2,
+        alpha=alpha,
         lr=experiment.lr,
         gamma=GAMMA,
-        target_update_freq=experiment.target_update_freq
+        target_update_freq=experiment.target_update_freq,
     )
 
     analytics: Analytics = initialize_analytics(
@@ -101,7 +102,7 @@ def run_experiment(
     )
 
     runner: Runner = Runner(
-        name='test_ac',
+        name=name,
         env=env,
         agent=agent,
         analytics=analytics,
@@ -196,8 +197,8 @@ def main():
 
     agent_id = 0
     dim = 64*2*2
-    batch_size = N_ENVS
-    for dist_thresh in [0.25, 0.15]:
+    batch_size = 4000
+    for dist_thresh in [0.2, 0.1]:
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [False, True]:
                 experiment = Experiment(
@@ -221,10 +222,44 @@ def main():
                     action_mode=ActionMode.DOF_POSITION
                 )
                 run_experiment(
+                    name=f'ac',
                     env=env,
                     experiment=experiment,
-                    debug=args.debug)
+                    debug=args.debug,
+                    alpha=1e-2)
                 agent_id += 1
+
+    agent_id = 0
+    dim = 64*2*2
+    batch_size = 4000
+    for alpha in [1e-3, 1e-2, 1e-1]:
+        experiment = Experiment(
+            algo=Algorithm.AC,
+            n_epochs=N_EPOCHS,
+            n_episodes=N_EPISODES,
+            n_timesteps=N_STEPS,
+            dim_size=dim,
+            agent_id=agent_id,
+            n_envs=N_ENVS,
+            batch_size=batch_size,
+            lr=0.0001,
+            buffer_type=BufferType.WINNING,
+            eps_decay=EPS_DECAY,
+            randomize=False,
+            gamma=GAMMA,
+            action_scale=.1,
+            dist_thresh=0.2,
+            target_update_freq=TARGET_UPDATE_FREQ,
+            replay_buffer_size=REPLAY_BUFFER_SIZE,
+            action_mode=ActionMode.DOF_POSITION
+        )
+        run_experiment(
+            name=f'ac_alpha_{agent_id}',
+            env=env,
+            experiment=experiment,
+            debug=args.debug,
+            alpha=alpha)
+        agent_id += 1
 
     env.destroy()
 
