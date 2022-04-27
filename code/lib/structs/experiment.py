@@ -8,13 +8,15 @@ Object for holding experiments
 from dataclasses import dataclass
 from typing import Dict
 
+from cv2 import Algorithm
+
 from lib.buffers.buffer import BufferType
 from lib.structs.approach_task import ActionMode
 
 
 @dataclass
 class Experiment:
-    algo_name: str
+    algo: Algorithm
     gamma: float
     dim_size: int
     agent_id: int
@@ -41,7 +43,7 @@ class Experiment:
 
     def to_dict(self) -> Dict:
         return {
-            'algo_name': self.algo_name,
+            'algo': self.algo.value,
             'gamma': self.gamma,
             'dim_size': self.dim_size,
             'agent_id': self.agent_id,

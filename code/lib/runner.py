@@ -32,7 +32,7 @@ class Runner:
         self.agent = agent
         self.name = name
 
-        self.root = f'experiments/{name}/{experiment.algo_name}/{experiment.agent_id}'
+        self.root = f'experiments/{name}/{experiment.algo.value}/{experiment.agent_id}'
         self.analytics_dir = f'{self.root}/analytics'
         self.figs_dir = f'{self.analytics_dir}/figs'
         self.data_dir = f'{self.analytics_dir}/data'

@@ -8,6 +8,8 @@ Code to visualize the data
 import json
 import os
 from typing import Callable, Dict, List
+
+from cv2 import Algorithm
 from lib.structs.approach_task import ActionMode
 from lib.buffers.buffer import BufferType
 
@@ -24,7 +26,7 @@ import seaborn as sns
 
 def experiment_from_config(config: Dict) -> Experiment:
     return Experiment(
-        algo_name=config['algo_name'],
+        algo=Algorithm(config['algo']),
         gamma=config['gamma'],
         dim_size=config['dim_size'],
         agent_id=config['agent_id'],

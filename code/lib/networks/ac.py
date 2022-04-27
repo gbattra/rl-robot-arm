@@ -31,7 +31,6 @@ class ActorCriticNetwork(nn.Module):
             nn.ReLU()
         )
         self.value_layer = nn.Linear(dim_size, self.n_joints)
-
         self.policy_layer = nn.Linear(dim_size, self.action_size)
 
         self.loss_fn = nn.MSELoss()

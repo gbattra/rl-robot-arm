@@ -83,7 +83,7 @@ def run_experiment(
     else:
         buffer: ReplayBuffer = WinBuffer(experiment.replay_buffer_size, env.observation_size, env.arm_n_dofs, env.n_envs, 0.25)
 
-    if experiment.algo_name == Algorithm.AC.value:
+    if experiment.algo == Algorithm.AC:
         agent: Agent = ActorCriticAgent(
             buffer=buffer,
             obs_size=env.observation_size,
@@ -223,7 +223,7 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    for algo in [Algorithm.DQN, Algorithm.AC]:
+    for algo in [Algorithm.AC, Algorithm.DQN]:
         agent_id = 0
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [True, False]:
@@ -231,7 +231,7 @@ def main():
                     for dim_size in [64, 64*(2**3)]:
                         for action_scale in [0.1, 0.05]:
                             experiment = Experiment(
-                                algo_name=algo,
+                                algo=algo,
                                 n_epochs=N_EPOCHS,
                                 n_episodes=N_EPISODES,
                                 n_timesteps=N_STEPS,
@@ -251,7 +251,7 @@ def main():
                                 action_mode=action_mode
                             )
                             run_experiment(
-                                name='test',
+                                name='final',
                                 env=env,
                                 experiment=experiment,
                                 debug=args.debug)
