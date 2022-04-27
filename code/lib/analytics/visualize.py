@@ -26,7 +26,7 @@ import seaborn as sns
 
 def experiment_from_config(config: Dict) -> Experiment:
     return Experiment(
-        algo=Algorithm(config['algo']),
+        algo=Algorithm(config['algo_name']),
         gamma=config['gamma'],
         dim_size=config['dim_size'],
         agent_id=config['agent_id'],

@@ -7,7 +7,7 @@ Run approach problem with DQN methods
 
 
 import math
-from cv2 import exp
+from lib.structs.algorithm import Algorithm
 from isaacgym import gymapi, gymutil
 
 import torch
@@ -209,7 +209,7 @@ def main():
         for buffer_type in [BufferType.WINNING, BufferType.STANDARD, BufferType.HER]:
             for randomize in [False, True]:
                 experiment = Experiment(
-                    algo_name='dqn',
+                    algo=Algorithm.DQN,
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,

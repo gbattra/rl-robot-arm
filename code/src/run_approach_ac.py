@@ -11,6 +11,7 @@ from isaacgym import gymapi, gymutil
 from typing import Callable
 
 import torch
+from lib.structs.algorithm import Algorithm
 from lib.agents.ac_agent import ActorCriticAgent
 from lib.analytics.analytics import Analytics, initialize_analytics
 from lib.analytics.plotting import plot_learning
@@ -199,7 +200,7 @@ def main():
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             for randomize in [False, True]:
                 experiment = Experiment(
-                    algo_name='actor_critic',
+                    algo=Algorithm.AC,
                     n_epochs=N_EPOCHS,
                     n_episodes=N_EPISODES,
                     n_timesteps=N_STEPS,

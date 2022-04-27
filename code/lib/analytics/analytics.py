@@ -23,7 +23,7 @@ class Analytics:
     debug: bool
 
     def __str__(self) -> str:
-        return f'{self.experiment.algo_name} Agent {self.experiment.agent_id}'
+        return f'{self.experiment.algo.value} Agent {self.experiment.agent_id}'
 
 
 def initialize_analytics(

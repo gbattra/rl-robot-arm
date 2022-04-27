@@ -43,7 +43,7 @@ class Experiment:
 
     def to_dict(self) -> Dict:
         return {
-            'algo': self.algo.value,
+            'algo_name': self.algo.value,
             'gamma': self.gamma,
             'dim_size': self.dim_size,
             'agent_id': self.agent_id,
