@@ -223,39 +223,39 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    # for algo in [Algorithm.DQN, Algorithm.AC]:
-    #     agent_id = 0
-    #     for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-    #         for randomize in [True, False]:
-    #             for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
-    #                 for dim_size in [64, 64*(2**3)]:
-    #                     for action_scale in [0.1, 0.05]:
-
-    experiment = Experiment(
-        algo_name='ac',
-        n_epochs=2,
-        n_episodes=2,
-        n_timesteps=2,
-        dim_size=62*2*2,
-        agent_id=0,
-        n_envs=N_ENVS,
-        batch_size=N_ENVS//2,
-        lr=0.0001,
-        buffer_type=BufferType.WINNING,
-        eps_decay=EPS_DECAY,
-        randomize=False,
-        gamma=GAMMA,
-        action_scale=action_scale,
-        dist_thresh=0.1,
-        target_update_freq=TARGET_UPDATE_FREQ,
-        replay_buffer_size=REPLAY_BUFFER_SIZE,
-        action_mode=ActionMode.DOF_POSITION
-    )
-    run_experiment(
-        name='test',
-        env=env,
-        experiment=experiment,
-        debug=args.debug)
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        agent_id = 0
+        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+            for randomize in [True, False]:
+                for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
+                    for dim_size in [64, 64*(2**3)]:
+                        for action_scale in [0.1, 0.05]:
+                            experiment = Experiment(
+                                algo_name=algo,
+                                n_epochs=N_EPOCHS,
+                                n_episodes=N_EPISODES,
+                                n_timesteps=N_STEPS,
+                                dim_size=dim_size,
+                                agent_id=0,
+                                n_envs=N_ENVS,
+                                batch_size=N_ENVS//2,
+                                lr=0.0001,
+                                buffer_type=buffer_type,
+                                eps_decay=EPS_DECAY,
+                                randomize=randomize,
+                                gamma=GAMMA,
+                                action_scale=action_scale,
+                                dist_thresh=0.1,
+                                target_update_freq=TARGET_UPDATE_FREQ,
+                                replay_buffer_size=REPLAY_BUFFER_SIZE,
+                                action_mode=action_mode
+                            )
+                            run_experiment(
+                                name='test',
+                                env=env,
+                                experiment=experiment,
+                                debug=args.debug)
+                            agent_id += 1
 
     env.destroy()
 
