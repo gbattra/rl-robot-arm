@@ -63,7 +63,8 @@ def run_experiment(
         name: str,
         env: ApproachEnvContinuous,
         experiment: Experiment,
-        debug: bool):
+        debug: bool,
+        alpha: float = 1e-3):
 
     env.randomize = experiment.randomize
     env.action_scale = experiment.action_scale
@@ -92,7 +93,7 @@ def run_experiment(
             network_dim_size=experiment.dim_size,
             batch_size=experiment.batch_size,
             action_scale=experiment.action_scale,
-            alpha=1e-2,
+            alpha=alpha,
             lr=experiment.lr,
             gamma=GAMMA,
             target_update_freq=experiment.target_update_freq
@@ -228,63 +229,63 @@ def main():
         for randomize in [True, False]:
             for action_mode in [ActionMode.DOF_POSITION, ActionMode.DOF_TARGET]:
                 for dim_size in [264, 64*(2**3)]:
-                    experiment = Experiment(
-                        algo=Algorithm.AC,
-                        n_epochs=N_EPOCHS,
-                        n_episodes=N_EPISODES,
-                        n_timesteps=N_STEPS,
-                        dim_size=dim_size,
-                        agent_id=agent_id,
-                        n_envs=N_ENVS,
-                        batch_size=N_ENVS//2,
-                        lr=0.0001,
-                        buffer_type=buffer_type,
-                        eps_decay=EPS_DECAY,
-                        randomize=randomize,
-                        gamma=GAMMA,
-                        action_scale=action_scale,
-                        dist_thresh=0.2,
-                        target_update_freq=TARGET_UPDATE_FREQ,
-                        replay_buffer_size=REPLAY_BUFFER_SIZE,
-                        action_mode=action_mode
-                    )
-                    run_experiment(
-                        name='ac',
-                        env=env,
-                        experiment=experiment,
-                        debug=args.debug)
-                    agent_id += 1
+                        experiment = Experiment(
+                            algo=Algorithm.AC,
+                            n_epochs=N_EPOCHS,
+                            n_episodes=N_EPISODES,
+                            n_timesteps=N_STEPS,
+                            dim_size=dim_size,
+                            agent_id=agent_id,
+                            n_envs=N_ENVS,
+                            batch_size=N_ENVS//2,
+                            lr=0.0001,
+                            buffer_type=buffer_type,
+                            eps_decay=EPS_DECAY,
+                            randomize=randomize,
+                            gamma=GAMMA,
+                            action_scale=action_scale,
+                            dist_thresh=0.2,
+                            target_update_freq=TARGET_UPDATE_FREQ,
+                            replay_buffer_size=REPLAY_BUFFER_SIZE,
+                            action_mode=action_mode
+                        )
+                        run_experiment(
+                            name='ac',
+                            env=env,
+                            experiment=experiment,
+                            debug=args.debug)
+                        agent_id += 1
 
     agent_id = 0
-    for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
-        for randomize in [True, False]:
-            for action_scale in [0.05, 0.025]:
-                experiment = Experiment(
-                    algo=Algorithm.AC,
-                    n_epochs=N_EPOCHS,
-                    n_episodes=N_EPISODES,
-                    n_timesteps=N_STEPS,
-                    dim_size=64*(2**3),
-                    agent_id=agent_id,
-                    n_envs=N_ENVS,
-                    batch_size=N_ENVS//2,
-                    lr=0.0001,
-                    buffer_type=buffer_type,
-                    eps_decay=EPS_DECAY,
-                    randomize=randomize,
-                    gamma=GAMMA,
-                    action_scale=action_scale,
-                    dist_thresh=0.1,
-                    target_update_freq=TARGET_UPDATE_FREQ,
-                    replay_buffer_size=REPLAY_BUFFER_SIZE,
-                    action_mode=ActionMode.DOF_POSITION
-                )
-                run_experiment(
-                    name='ac_dist_thresh',
-                    env=env,
-                    experiment=experiment,
-                    debug=args.debug)
-                agent_id += 1
+    for alpha in [1e-3, 1e-2, 1e-1]:
+        experiment = Experiment(
+            algo=Algorithm.AC,
+            n_epochs=N_EPOCHS,
+            n_episodes=N_EPISODES,
+            n_timesteps=N_STEPS,
+            dim_size=dim_size,
+            agent_id=agent_id,
+            n_envs=N_ENVS,
+            batch_size=N_ENVS//2,
+            lr=0.0001,
+            buffer_type=buffer_type,
+            eps_decay=EPS_DECAY,
+            randomize=randomize,
+            gamma=GAMMA,
+            action_scale=action_scale,
+            dist_thresh=0.2,
+            target_update_freq=TARGET_UPDATE_FREQ,
+            replay_buffer_size=REPLAY_BUFFER_SIZE,
+            action_mode=action_mode
+        )
+        run_experiment(
+            name=f'ac_alpha_{agent_id}',
+            env=env,
+            experiment=experiment,
+            debug=args.debug,
+            alpha=alpha)
+        agent_id += 1
+
     env.destroy()
 
 if __name__ == "__main__":
