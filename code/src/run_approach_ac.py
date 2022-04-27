@@ -87,7 +87,7 @@ def run_experiment(
         network_dim_size=experiment.dim_size,
         batch_size=experiment.batch_size,
         action_scale=experiment.action_scale,
-        alpha=1e-3,
+        alpha=1e-2,
         lr=experiment.lr,
         gamma=GAMMA,
         target_update_freq=experiment.target_update_freq
@@ -101,6 +101,7 @@ def run_experiment(
     )
 
     runner: Runner = Runner(
+        name='test_ac',
         env=env,
         agent=agent,
         analytics=analytics,
