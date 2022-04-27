@@ -30,11 +30,7 @@ class ActorCriticNetwork(nn.Module):
             nn.Linear(dim_size, dim_size),
             nn.ReLU()
         )
-        self.network.apply(init_weights)
-
         self.value_layer = nn.Linear(dim_size, self.n_joints)
-        self.value_layer.weight.data.fill_(0.0)
-        self.value_layer.bias.data.fill_(0.0)
 
         self.policy_layer = nn.Linear(dim_size, self.action_size)
 

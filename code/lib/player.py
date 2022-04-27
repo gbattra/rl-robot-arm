@@ -9,7 +9,6 @@ import torch
 from tqdm import trange
 from lib.agents.agent import Agent
 from lib.envs.approach_env import ApproachEnv
-from lib.envs.env import Env
 
 
 class Player:
