@@ -178,7 +178,7 @@ class ApproachEnv:
 
         # task info
         self.action_scale = task_config.action_scale
-        self.observation_size = (self.arm_n_dofs * 2) + 3 + 3
+        self.observation_size = (self.arm_n_dofs * 3) + 3 + 3
         self.action_size = len(ApproachTaskActions) * self.arm_n_dofs
         self.distance_threshold = task_config.distance_threshold
 
@@ -241,7 +241,7 @@ class ApproachEnv:
         state: torch.Tensor = torch.cat(
             (
                 self.dof_positions,
-                # self.dof_velocities,
+                self.dof_velocities,
                 self.dof_targets,
                 self.hand_poses[:, 0:3],
                 self.box_poses[:, 0:3],

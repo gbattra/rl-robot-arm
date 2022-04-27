@@ -27,7 +27,8 @@ from lib.networks.dqn import Dqn
 from torch import nn
 from lib.agents.dqn_agent import DQNPlayer
 
-N_STEPS: int = 10000
+N_EPS: int = 1000
+N_STEPS: int = 100
 
 def main():
     custom_parameters = [
@@ -128,7 +129,7 @@ def main():
             experiment.action_scale)
             
     agent_player.load(f'{args.dir}/models/final.pth')
-    player = Player(agent_player, env, N_STEPS)
+    player = Player(agent_player, env, N_EPS, N_STEPS)
     player.play()
 
 
