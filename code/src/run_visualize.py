@@ -192,10 +192,10 @@ def visualize_dqn_results():
     ]
 
     # position mode / non-random / all buffers
-    position_mode_non_random_all_buffers('DQN', ['old/dqn'])
+    position_mode_non_random_all_buffers('DQN', ['dqn/dqn'])
 
     # position mode / random / all buffers
-    position_mode_random_all_buffers('DQN', ['old/dqn'])
+    position_mode_random_all_buffers('DQN', ['dqn/dqn'])
 
     # target mode / non-random / all buffers
     target_mode_non_random_all_buffers('DQN', ['target_mode/dqn'])
@@ -221,7 +221,7 @@ def visualize_ac_results():
 
 def main():
     visualize_dqn_results()
-    visualize_ac_results()
+    # visualize_ac_results()
 
 
 if __name__ == '__main__':
