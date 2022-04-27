@@ -6,14 +6,12 @@ DQN Agent
 '''
 
 
-from typing import Callable, Dict
+from typing import Callable
 
 import torch
 from torch import nn
-from tqdm import trange
-from lib.agents.agent import Agent, AgentMode
+from lib.agents.agent import Agent
 from lib.buffers.buffer import ReplayBuffer
-from lib.envs.env import Env
 
 
 class DQNAgent(Agent):
@@ -138,12 +136,4 @@ class DQNPlayer(Agent):
 
             # get max a_vals per joint: [N x n_joints]
             policy_actions = joint_a_vals.max(-1)[1]
-
-            # if not in play mode, take epsilon-random actions
-            randoms = torch.rand(state.shape[0], device=self.device) < self.epsilon(t)
-            # get random action indices in shape: [N x n_joints]
-            random_actions = torch.randint(
-                0, self.n_dof_actions, (joint_a_vals.shape[0], joint_a_vals.shape[1]), device=self.device
-            )
-            policy_actions[randoms] = random_actions[randoms]
         return policy_actions

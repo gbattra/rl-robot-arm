@@ -5,19 +5,10 @@
 Evaluate / watch a trained model perform
 '''
 import json
-import math
 from isaacgym import gymapi, gymutil
-from typing import Callable
-
-import torch
-from lib.agents.ac_agent import ActorCriticAgent, ActorCriticPlayer
-from lib.agents.agent import Agent
-from lib.analytics.analytics import Analytics, initialize_analytics
-from lib.analytics.plotting import plot_learning
+from lib.agents.ac_agent import ActorCriticPlayer
 from lib.analytics.visualize import experiment_from_config
-from lib.buffers.her_buffer import HerBuffer
-from lib.buffers.win_buffer import WinBuffer
-from lib.envs.approach_env import ApproachEnvContinuous, ApproachEnvDiscrete
+from lib.envs.approach_env import ApproachEnvDiscrete
 from lib.player import Player
 from lib.structs.algorithm import Algorithm
 from lib.structs.arm_and_box_sim import (
@@ -29,20 +20,19 @@ from lib.structs.arm_and_box_sim import (
 )
 
 from lib.structs.approach_task import (
-    ActionMode,
     ApproachTaskActions,
     ApproachTaskConfig,
 )
-from lib.structs.experiment import Experiment
 from lib.networks.dqn import Dqn
 from torch import nn
-from lib.agents.dqn_agent import DQNAgent, DQNPlayer
+from lib.agents.dqn_agent import DQNPlayer
 
 N_STEPS: int = 10000
 
 def main():
     custom_parameters = [
         {"name": "--dir", "type": str},
+        {"name": "--algo", "type": str},
     ]
 
     args = gymutil.parse_arguments(custom_parameters=custom_parameters)
@@ -105,7 +95,7 @@ def main():
         sim_params=sim_params,
         plane_params=plane_params,
         viewer_config=ViewerConfig(
-            headless=args.headless, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
+            headless=False, pos=gymapi.Vec3(3, 2, 2), look_at=gymapi.Vec3(-3, -2, -2)
         ),
     )
 
@@ -126,7 +116,7 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    if args.algo == Algorithm.DQN:
+    if Algorithm(args.algo) == Algorithm.DQN:
         policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
         agent_player = DQNPlayer(env.arm_n_dofs, len(ApproachTaskActions), policy_net)
     else:
@@ -136,6 +126,11 @@ def main():
             env.observation_size,
             experiment.dim_size,
             experiment.action_scale)
-
+            
+    agent_player.load(f'{args.dir}/models/final.pth')
     player = Player(agent_player, env, N_STEPS)
     player.play()
+
+
+if __name__ == '__main__':
+    main()

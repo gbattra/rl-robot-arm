@@ -6,6 +6,7 @@ Base Env class
 '''
 
 from abc import abstractmethod
+from typing import Dict, Tuple
 
 import torch
 
@@ -16,5 +17,6 @@ class Env:
         ...
 
     @abstractmethod
-    def step(self, actions: torch.Tensor) -> None:
+    def step(self, actions: torch.Tensor) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict]:
         ...

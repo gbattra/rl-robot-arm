@@ -5,10 +5,9 @@
 SAC Agent
 '''
 
-from typing import Callable
 import torch
 
-from lib.agents.agent import Agent, AgentMode
+from lib.agents.agent import Agent
 from lib.buffers.buffer import ReplayBuffer
 from lib.networks.ac import ActorCriticNetwork
 
@@ -112,7 +111,6 @@ class ActorCriticPlayer(Agent):
         self.obs_size = obs_size
         self.n_joints = n_joints
         self.n_actions = n_actions
-        self.mode = AgentMode.TRAIN
 
         self.actor_critic = ActorCriticNetwork(0, obs_size, n_actions, n_joints, network_dim_size).to(self.device)
 
