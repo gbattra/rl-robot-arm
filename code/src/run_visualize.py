@@ -25,7 +25,7 @@ def buffer_type(experiment: Experiment, buffer_type: BufferType) -> bool:
     return experiment.buffer_type == buffer_type
 
 
-def position_mode_all_buffers(algo: str, datadirs: List[str]) -> None:
+def position_mode_non_random_all_buffers(algo: str, datadirs: List[str]) -> None:
     plot_components = [
         PlotComponent(
             label='Winning Buffer',
@@ -105,7 +105,7 @@ def position_mode_random_all_buffers(algo: str, datadirs: List[str]) -> None:
     visualize_results(plot_config)
 
 
-def target_mode_all_buffers(algo: str, datadirs: List[str]) -> None:
+def target_mode_non_random_all_buffers(algo: str, datadirs: List[str]) -> None:
     plot_components = [
         PlotComponent(
             label='Winning Buffer',
@@ -192,16 +192,16 @@ def visualize_dqn_results():
     ]
 
     # position mode / non-random / all buffers
-    position_mode_all_buffers('DQN', ['old/dqn'])
+    position_mode_non_random_all_buffers('DQN', ['old/dqn'])
 
     # position mode / random / all buffers
-    # position_mode_random_all_buffers('DQN', ['old/dqn'])
+    position_mode_random_all_buffers('DQN', ['old/dqn'])
 
     # target mode / non-random / all buffers
-    target_mode_all_buffers('DQN', ['target_mode/dqn'])
+    target_mode_non_random_all_buffers('DQN', ['target_mode/dqn'])
 
     # target mode / random / all buffers
-    # target_mode_random_all_buffers('DQN', ['target_mode/dqn'])
+    target_mode_random_all_buffers('DQN', ['target_mode/dqn'])
 
 
 def visualize_ac_results():
