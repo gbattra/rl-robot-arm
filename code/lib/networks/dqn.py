@@ -15,8 +15,8 @@ class Dqn(nn.Module):
         self.network = nn.Sequential(
             nn.Linear(obs_size, dim_size),
             nn.ReLU(),
-            # nn.Linear(dim_size, dim_size),
-            # nn.ReLU(),
+            nn.Linear(dim_size, dim_size),
+            nn.ReLU(),
             nn.Linear(dim_size, action_size)
         )
 
