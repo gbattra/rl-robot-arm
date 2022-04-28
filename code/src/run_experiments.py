@@ -309,7 +309,7 @@ def main():
                 action_mode=ActionMode.DOF_TARGET
             )
             run_experiment(
-                name=f'ac_alpha_{agent_id}',
+                name=f'target_long',
                 env=env,
                 experiment=experiment,
                 debug=args.debug,
