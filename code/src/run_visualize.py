@@ -209,16 +209,16 @@ def visualize_dqn_results():
 
 def visualize_ac_results():
     # position mode / non-random / all buffers
-    position_mode_non_random_all_buffers('AC', ['old/ac'])
+    position_mode_non_random_all_buffers('AC', ['ac/ac'])
 
     # position mode / random / all buffers
-    position_mode_random_all_buffers('AC', ['old/ac'])
+    position_mode_random_all_buffers('AC', ['ac/ac'])
 
     # target mode / non-random / all buffers
-    target_mode_non_random_all_buffers('AC', ['target_mode/ac'])
+    target_mode_non_random_all_buffers('AC', ['ac/ac'])
 
     # target mode / random / all buffers
-    target_mode_random_all_buffers('AC', ['target_mode/ac'])
+    target_mode_random_all_buffers('AC', ['ac/ac'])
     pass
 
 
@@ -318,13 +318,13 @@ def visualize_dist_thresh_results():
 
 def main():
     # visualize_dqn_results()
-    # visualize_ac_results()
+    visualize_ac_results()
 
     # visualize_random_long_results()
 
     # visualize_random_results()
 
-    visualize_dist_thresh_results()
+    # visualize_dist_thresh_results()
 
 
 if __name__ == '__main__':
