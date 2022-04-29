@@ -9,6 +9,7 @@ Run a bunch of experiments
 
 
 import math
+from re import A
 from isaacgym import gymapi, gymutil
 from typing import Callable
 
@@ -51,7 +52,7 @@ EPS_DECAY: float = 0.9999
 REPLAY_BUFFER_SIZE: int = 1000000
 TARGET_UPDATE_FREQ: int = 100
 
-N_ENVS: int = 100
+N_ENVS: int = 1000
 N_EPOCHS: int = 3
 N_EPISODES: int = 100
 N_STEPS: int = 450
@@ -223,59 +224,63 @@ def main():
     )
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
-    
+        
     agent_id = 0
-    experiment = Experiment(
-        algo=Algorithm.DQN,
-        n_epochs=N_EPOCHS,
-        n_episodes=5,
-        n_timesteps=500,
-        dim_size=64*(2**3),
-        agent_id=agent_id,
-        n_envs=N_ENVS,
-        batch_size=N_ENVS//2,
-        lr=0.0001,
-        buffer_type=BufferType.STANDARD,
-        eps_decay=EPS_DECAY,
-        randomize=True,
-        gamma=GAMMA,
-        action_scale=.1,
-        dist_thresh=0.2,
-        target_update_freq=TARGET_UPDATE_FREQ,
-        replay_buffer_size=REPLAY_BUFFER_SIZE,
-        action_mode=ActionMode.DOF_TARGET
-    )
-    run_experiment(
-        name=f'standard_random',
-        env=env,
-        experiment=experiment,
-        debug=args.debug)
 
-    experiment = Experiment(
-        algo=Algorithm.DQN,
-        n_epochs=N_EPOCHS,
-        n_episodes=5,
-        n_timesteps=500,
-        dim_size=64,
-        agent_id=agent_id,
-        n_envs=N_ENVS,
-        batch_size=N_ENVS*2,
-        lr=0.001,
-        buffer_type=BufferType.WINNING,
-        eps_decay=EPS_DECAY,
-        randomize=True,
-        gamma=GAMMA,
-        action_scale=.1,
-        dist_thresh=0.2,
-        target_update_freq=TARGET_UPDATE_FREQ,
-        replay_buffer_size=REPLAY_BUFFER_SIZE,
-        action_mode=ActionMode.DOF_TARGET
-    )
-    run_experiment(
-        name=f'win_target',
-        env=env,
-        experiment=experiment,
-        debug=args.debug)
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+            experiment = Experiment(
+                algo=algo,
+                n_epochs=5,
+                n_episodes=100,
+                n_timesteps=300,
+                dim_size=64*(2**3),
+                agent_id=agent_id,
+                n_envs=N_ENVS,
+                batch_size=N_ENVS//2,
+                lr=0.0001,
+                buffer_type=buffer_type,
+                eps_decay=EPS_DECAY,
+                randomize=True,
+                gamma=GAMMA,
+                action_scale=.1,
+                dist_thresh=0.2,
+                target_update_freq=TARGET_UPDATE_FREQ,
+                replay_buffer_size=REPLAY_BUFFER_SIZE,
+                action_mode=ActionMode.DOF_POSITION
+            )
+            run_experiment(
+                name=f'standard_random',
+                env=env,
+                experiment=experiment,
+                debug=args.debug)
+    for algo in [Algorithm.DQN, Algorithm.AC]:
+        for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
+            experiment = Experiment(
+                algo=algo,
+                n_epochs=5,
+                n_episodes=100,
+                n_timesteps=300,
+                dim_size=64*(2**3),
+                agent_id=agent_id,
+                n_envs=N_ENVS,
+                batch_size=N_ENVS//2,
+                lr=0.0001,
+                buffer_type=buffer_type,
+                eps_decay=EPS_DECAY,
+                randomize=True,
+                gamma=GAMMA,
+                action_scale=.1,
+                dist_thresh=0.2,
+                target_update_freq=TARGET_UPDATE_FREQ,
+                replay_buffer_size=REPLAY_BUFFER_SIZE,
+                action_mode=ActionMode.DOF_TARGET
+            )
+            run_experiment(
+                name=f'standard_random',
+                env=env,
+                experiment=experiment,
+                debug=args.debug)
 
     env.destroy()
 

@@ -28,7 +28,7 @@ from torch import nn
 from lib.agents.dqn_agent import DQNPlayer
 
 N_EPS: int = 1000
-N_STEPS: int = 100
+N_STEPS: int = 500
 
 def main():
     custom_parameters = [
@@ -117,7 +117,7 @@ def main():
 
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
 
-    if args.algo == Algorithm.DQN:
+    if args.algo == Algorithm.DQN.value:
         policy_net: nn.Module = Dqn(env.observation_size, env.action_size, experiment.dim_size).to(env.device)
         agent_player = DQNPlayer(env.arm_n_dofs, len(ApproachTaskActions), policy_net)
     else:
