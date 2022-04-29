@@ -226,7 +226,6 @@ def main():
     env = ApproachEnvDiscrete(sim_config, task_config, gym)
         
     agent_id = 0
-
     for algo in [Algorithm.DQN, Algorithm.AC]:
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             experiment = Experiment(
@@ -250,10 +249,12 @@ def main():
                 action_mode=ActionMode.DOF_POSITION
             )
             run_experiment(
-                name=f'standard_random',
+                name=f'standard_random_pos',
                 env=env,
                 experiment=experiment,
                 debug=args.debug)
+            agent_id += 1
+    agent_id = 0
     for algo in [Algorithm.DQN, Algorithm.AC]:
         for buffer_type in [BufferType.WINNING, BufferType.HER, BufferType.STANDARD]:
             experiment = Experiment(
@@ -277,10 +278,11 @@ def main():
                 action_mode=ActionMode.DOF_TARGET
             )
             run_experiment(
-                name=f'standard_random',
+                name=f'standard_random_target',
                 env=env,
                 experiment=experiment,
                 debug=args.debug)
+            agent_id += 1
 
     env.destroy()
 
